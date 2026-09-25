@@ -20,19 +20,42 @@ export default function LoginPage() {
     setError("");
     setLoading(true);
 
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
+   const { data, error } = await supabase.auth.signInWithPassword({
+  email,
+  password,
+});
 
-    if (error) {
-      setError(error.message);
-      setLoading(false);
-      return;
-    }
+if (error) {
+  setError(error.message);
+  setLoading(false);
+  return;
+}
 
-    router.push("/dashboard");
-    router.refresh();
+if (!data.user) {
+  setError("Login succeeded, but no user was returned.");
+  setLoading(false);
+  return;
+}
+
+const { data: profile, error: profileError } = await supabase
+  .from("profiles")
+  .select("role")
+  .eq("id", data.user.id)
+  .single();
+
+if (profileError || !profile) {
+  setError("Your account profile could not be found.");
+  setLoading(false);
+  return;
+}
+
+if (profile.role === "PLATFORM_ADMIN") {
+  router.push("/admin");
+} else {
+  router.push("/dashboard");
+}
+
+router.refresh();
   }
 
   return (
