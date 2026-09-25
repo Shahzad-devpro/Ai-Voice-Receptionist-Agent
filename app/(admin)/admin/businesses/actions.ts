@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase/server";
 export type CreateBusinessState = {
   error?: string;
   success?: boolean;
+  businessId?: string;
 };
 
 export async function createBusiness(
@@ -24,7 +25,7 @@ export async function createBusiness(
   const email = String(formData.get("email") ?? "").trim();
   const address = String(formData.get("address") ?? "").trim();
   const timezone = String(formData.get("timezone") ?? "").trim();
-  const currency = String(formData.get("currency") ?? "").trim();
+  const currency = String(formData.get("currency") ?? "").trim().toUpperCase();
   const locale = String(formData.get("locale") ?? "").trim();
   const serviceArea = String(formData.get("service_area") ?? "").trim();
   const aiInstructions = String(
@@ -51,51 +52,64 @@ export async function createBusiness(
     return { error: "Currency is required." };
   }
 
+  if (!["USD", "GBP", "EUR"].includes(currency)) {
+    return {
+      error: "Currency must be USD, GBP, or EUR.",
+    };
+  }
+
   if (!locale) {
     return { error: "Locale is required." };
   }
 
-  const { error } = await supabase.from("businesses").insert({
-    name,
-    industry,
-    country,
-    phone: phone || null,
-    email: email || null,
-    address: address || null,
-    timezone,
-    currency,
-    locale,
-    service_area: serviceArea || null,
-    business_hours: {
-      monday: {
-        open: "09:00",
-        close: "17:00",
-      },
-      tuesday: {
-        open: "09:00",
-        close: "17:00",
-      },
-      wednesday: {
-        open: "09:00",
-        close: "17:00",
-      },
-      thursday: {
-        open: "09:00",
-        close: "17:00",
-      },
-      friday: {
-        open: "09:00",
-        close: "17:00",
-      },
-      saturday: null,
-      sunday: null,
-    },
-    ai_instructions: aiInstructions || null,
-  });
+  const { data: business, error } = await supabase
+    .from("businesses")
+    .insert({
+      name,
+      industry,
+      country,
+      phone: phone || null,
+      email: email || null,
+      address: address || null,
+      timezone,
+      currency,
+      locale,
+      service_area: serviceArea || null,
 
-  if (error) {
+      business_hours: {
+        monday: {
+          open: "09:00",
+          close: "17:00",
+        },
+        tuesday: {
+          open: "09:00",
+          close: "17:00",
+        },
+        wednesday: {
+          open: "09:00",
+          close: "17:00",
+        },
+        thursday: {
+          open: "09:00",
+          close: "17:00",
+        },
+        friday: {
+          open: "09:00",
+          close: "17:00",
+        },
+        saturday: null,
+        sunday: null,
+      },
+
+      ai_instructions: aiInstructions || null,
+      status: "ACTIVE",
+    })
+    .select("id")
+    .single();
+
+  if (error || !business) {
     return {
-      error: error.message,
+      error: error?.message ?? "Failed to create business.",
     };
   }
 
@@ -103,5 +117,6 @@ export async function createBusiness(
 
   return {
     success: true,
+    businessId: business.id,
   };
 }

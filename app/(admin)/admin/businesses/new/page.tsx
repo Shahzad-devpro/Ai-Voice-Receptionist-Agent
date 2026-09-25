@@ -19,10 +19,10 @@ export default function NewBusinessPage() {
   );
 
   useEffect(() => {
-    if (state.success) {
-      router.push("/admin/businesses");
-    }
-  }, [state.success, router]);
+  if (state.success && state.businessId) {
+    router.push(`/admin/businesses/${state.businessId}/onboarding`);
+  }
+}, [state.success, state.businessId, router]);
 
   return (
     <div className="max-w-4xl">
