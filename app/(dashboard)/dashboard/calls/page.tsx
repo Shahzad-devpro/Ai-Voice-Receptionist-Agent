@@ -1,14 +1,9 @@
+
 import Link from "next/link";
 
 import { getCurrentUser } from "@/lib/auth/get-current-user";
 import { createClient } from "@/lib/supabase/server";
-
-function formatDateTime(value: string) {
-  return new Date(value).toLocaleString("en-US", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  });
-}
+import { formatBusinessDateTime } from "@/lib/formatters/business-time";
 
 function formatDuration(seconds: number | null) {
   if (seconds === null || seconds === undefined) {
@@ -30,7 +25,10 @@ export default async function CallsPage() {
 
   const supabase = await createClient();
 
-  const { data: profile, error: profileError } = await supabase
+  const {
+    data: profile,
+    error: profileError,
+  } = await supabase
     .from("profiles")
     .select("business_id")
     .eq("id", user.id)
@@ -39,6 +37,21 @@ export default async function CallsPage() {
   if (profileError || !profile?.business_id) {
     throw new Error(
       "Your account is not assigned to a business."
+    );
+  }
+
+  const {
+    data: business,
+    error: businessError,
+  } = await supabase
+    .from("businesses")
+    .select("timezone, locale")
+    .eq("id", profile.business_id)
+    .single();
+
+  if (businessError || !business) {
+    throw new Error(
+      "Failed to load business settings."
     );
   }
 
@@ -67,6 +80,7 @@ export default async function CallsPage() {
         status
       )
     `)
+    .eq("business_id", profile.business_id)
     .order("started_at", { ascending: false });
 
   if (error) {
@@ -97,6 +111,11 @@ export default async function CallsPage() {
 
           <p className="mt-2 text-sm text-slate-500">
             Review conversations handled by your AI receptionist.
+          </p>
+
+          <p className="mt-2 text-xs text-slate-400">
+            Times shown in business timezone:{" "}
+            {business.timezone}
           </p>
         </div>
       </div>
@@ -136,7 +155,9 @@ export default async function CallsPage() {
 
               <tbody className="divide-y divide-slate-200">
                 {calls.map((call) => {
-                  const customer = Array.isArray(call.customers)
+                  const customer = Array.isArray(
+                    call.customers
+                  )
                     ? call.customers[0]
                     : call.customers;
 
@@ -147,7 +168,8 @@ export default async function CallsPage() {
                     >
                       <td className="px-6 py-4">
                         <p className="font-semibold text-slate-900">
-                          {customer?.name ?? "Unknown caller"}
+                          {customer?.name ??
+                            "Unknown caller"}
                         </p>
 
                         <p className="mt-1 text-xs text-slate-400">
@@ -156,22 +178,30 @@ export default async function CallsPage() {
                       </td>
 
                       <td className="px-6 py-4 text-sm text-slate-600">
-                        {formatDateTime(call.started_at)}
+                        {formatBusinessDateTime(
+                          call.started_at,
+                          business.timezone,
+                          business.locale
+                        )}
                       </td>
 
                       <td className="px-6 py-4 text-sm text-slate-600">
-                        {formatDuration(call.duration_seconds)}
+                        {formatDuration(
+                          call.duration_seconds
+                        )}
                       </td>
 
                       <td className="px-6 py-4">
                         <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-600">
-                          {call.outcome ?? "Not recorded"}
+                          {call.outcome ??
+                            "Not recorded"}
                         </span>
                       </td>
 
                       <td className="max-w-sm px-6 py-4">
                         <p className="truncate text-sm text-slate-500">
-                          {call.summary ?? "No summary available"}
+                          {call.summary ??
+                            "No summary available"}
                         </p>
                       </td>
 
@@ -196,8 +226,8 @@ export default async function CallsPage() {
             </h2>
 
             <p className="mx-auto mt-2 max-w-md text-sm text-slate-500">
-              Calls handled by your AI receptionist will appear
-              here once the voice engine is connected.
+              Calls handled by your AI receptionist will
+              appear here once the voice engine is connected.
             </p>
           </div>
         )}
@@ -205,3 +235,4 @@ export default async function CallsPage() {
     </div>
   );
 }
+

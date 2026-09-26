@@ -1,8 +1,10 @@
+
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { getCurrentUser } from "@/lib/auth/get-current-user";
 import { createClient } from "@/lib/supabase/server";
+import { formatBusinessDateTime } from "@/lib/formatters/business-time";
 
 type LeadDetailsPageProps = {
   params: Promise<{
@@ -29,13 +31,6 @@ function getStatusClasses(status: string) {
   }
 }
 
-function formatDate(value: string) {
-  return new Date(value).toLocaleString("en-US", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  });
-}
-
 export default async function LeadDetailsPage({
   params,
 }: LeadDetailsPageProps) {
@@ -45,7 +40,10 @@ export default async function LeadDetailsPage({
 
   const supabase = await createClient();
 
-  const { data: profile, error: profileError } = await supabase
+  const {
+    data: profile,
+    error: profileError,
+  } = await supabase
     .from("profiles")
     .select("business_id")
     .eq("id", user.id)
@@ -54,6 +52,21 @@ export default async function LeadDetailsPage({
   if (profileError || !profile?.business_id) {
     throw new Error(
       "Your account is not assigned to a business."
+    );
+  }
+
+  const {
+    data: business,
+    error: businessError,
+  } = await supabase
+    .from("businesses")
+    .select("timezone, locale")
+    .eq("id", profile.business_id)
+    .single();
+
+  if (businessError || !business) {
+    throw new Error(
+      "Failed to load business settings."
     );
   }
 
@@ -74,6 +87,7 @@ export default async function LeadDetailsPage({
       )
     `)
     .eq("id", id)
+    .eq("business_id", profile.business_id)
     .single();
 
   if (error || !lead) {
@@ -106,7 +120,16 @@ export default async function LeadDetailsPage({
             </h1>
 
             <p className="mt-2 text-sm text-slate-500">
-              Created {formatDate(lead.created_at)}
+              Created{" "}
+              {formatBusinessDateTime(
+                lead.created_at,
+                business.timezone,
+                business.locale
+              )}
+            </p>
+
+            <p className="mt-1 text-xs text-slate-400">
+              Business timezone: {business.timezone}
             </p>
           </div>
 
@@ -142,7 +165,8 @@ export default async function LeadDetailsPage({
           </p>
 
           <div className="mt-2 rounded-xl bg-slate-50 p-4 text-sm leading-6 text-slate-700">
-            {lead.description ?? "No description provided."}
+            {lead.description ??
+              "No description provided."}
           </div>
         </div>
       </section>
@@ -209,3 +233,4 @@ export default async function LeadDetailsPage({
     </div>
   );
 }
+

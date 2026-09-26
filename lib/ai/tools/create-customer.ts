@@ -1,6 +1,8 @@
+
 import { createClient } from "@/lib/supabase/server";
 
 import type { ToolContext } from "./get-business-information";
+import { normalizePhone } from "./normalize-phone";
 
 export type CreateCustomerInput = {
   name: string;
@@ -24,21 +26,26 @@ export async function createCustomer(
   input: CreateCustomerInput
 ): Promise<CreateCustomerResult> {
   if (!context.businessId) {
-    throw new Error("Business context is required.");
+    throw new Error(
+      "Business context is required."
+    );
   }
 
   const name = input.name.trim();
-  const phone = input.phone.trim();
-  const email = input.email?.trim() || null;
-  const address = input.address?.trim() || null;
 
   if (!name) {
-    throw new Error("Customer name is required.");
+    throw new Error(
+      "Customer name is required."
+    );
   }
 
-  if (!phone) {
-    throw new Error("Customer phone number is required.");
-  }
+  const phone = normalizePhone(input.phone);
+
+  const email =
+    input.email?.trim() || null;
+
+  const address =
+    input.address?.trim() || null;
 
   const supabase = await createClient();
 
@@ -51,7 +58,9 @@ export async function createCustomer(
       email,
       address,
     })
-    .select("id, name, phone, email, address")
+    .select(
+      "id, name, phone, email, address"
+    )
     .single();
 
   if (error) {
@@ -68,3 +77,4 @@ export async function createCustomer(
     customer: data,
   };
 }
+

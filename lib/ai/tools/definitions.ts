@@ -16,8 +16,10 @@ const getBusinessInformation: FunctionDeclaration = {
 
 const getServices: FunctionDeclaration = {
   name: "getServices",
+
   description:
-    "Get the active services offered by the current business, including names, descriptions, durations, and configured prices.",
+    "REQUIRED TOOL: Retrieve the current active services offered by the business represented by this receptionist. ALWAYS call this tool when the customer asks what services are offered, what services are available, which services the business provides, or asks about a specific service. Do not answer service-list questions from the system prompt or memory. The returned database data is the authoritative source.",
+
   parameters: {
     type: Type.OBJECT,
     properties: {},
@@ -48,9 +50,10 @@ const findCustomer: FunctionDeclaration = {
     type: Type.OBJECT,
     properties: {
       phone: {
-        type: Type.STRING,
-        description: "Customer phone number.",
-      },
+  type: Type.STRING,
+  description:
+    "Customer phone number. Provide the complete phone number supplied by the caller.",
+},
     },
     required: ["phone"],
   },

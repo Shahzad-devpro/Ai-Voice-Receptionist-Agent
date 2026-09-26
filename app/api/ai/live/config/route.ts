@@ -1,32 +1,27 @@
 import { NextResponse } from "next/server";
 
 import { getAgentContext } from "@/lib/ai/get-agent-context";
-import { findCustomer } from "@/lib/ai/tools/find-customer";
+import { getBusinessContext } from "@/lib/ai/get-business-context";
+import { buildSystemPrompt } from "@/lib/ai/build-system-prompt";
 
-export async function GET(request: Request) {
+export async function GET() {
   try {
     const context = await getAgentContext();
 
-    const { searchParams } = new URL(request.url);
-
-    const phone = searchParams.get("phone") ?? "";
-
-    const result = await findCustomer(
-      {
-        businessId: context.businessId,
-      },
-      {
-        phone,
-      }
+    const business = await getBusinessContext(
+      context.businessId
     );
+
+    const systemInstruction =
+      buildSystemPrompt(business);
 
     return NextResponse.json({
       success: true,
-      result,
+      systemInstruction,
     });
   } catch (error) {
     console.error(
-      "Customer lookup failed:",
+      "Failed to build Live AI config:",
       error
     );
 
@@ -36,7 +31,7 @@ export async function GET(request: Request) {
         error:
           error instanceof Error
             ? error.message
-            : "Customer lookup failed.",
+            : "Failed to build Live AI configuration.",
       },
       { status: 500 }
     );

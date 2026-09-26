@@ -30,11 +30,19 @@ export async function executeTool(
         requireString(args.query, "query")
       );
 
-    case "findCustomer":
-      return findCustomer(
-        context,
-        requireString(args.phone, "phone")
-      );
+    case "findCustomer": {
+  const phone = args.phone;
+
+  if (typeof phone !== "string") {
+    throw new Error(
+      "findCustomer requires a phone number."
+    );
+  }
+
+  return findCustomer(context, {
+    phone,
+  });
+}
 
     case "createCustomer":
       return createCustomer(context, {

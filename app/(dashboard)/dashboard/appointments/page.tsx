@@ -19,11 +19,16 @@ function getStatusClasses(status: string) {
   }
 }
 
-function formatDateTime(value: string) {
-  return new Date(value).toLocaleString("en-US", {
+function formatDateTime(
+  value: string,
+  timezone: string,
+  locale: string
+) {
+  return new Intl.DateTimeFormat(locale, {
+    timeZone: timezone,
     dateStyle: "medium",
     timeStyle: "short",
-  });
+  }).format(new Date(value));
 }
 
 export default async function DashboardAppointmentsPage() {
@@ -31,7 +36,16 @@ export default async function DashboardAppointmentsPage() {
 
   const supabase = await createClient();
 
-  const { data: profile, error: profileError } = await supabase
+  /*
+   * Get the authenticated user's business.
+   *
+   * We derive the business from the server-side profile.
+   * We never trust a business_id supplied by the browser.
+   */
+  const {
+    data: profile,
+    error: profileError,
+  } = await supabase
     .from("profiles")
     .select("business_id")
     .eq("id", user.id)
@@ -43,24 +57,51 @@ export default async function DashboardAppointmentsPage() {
     );
   }
 
-  const { data: appointments, error } = await supabase
-    .from("appointments")
-    .select(`
-      id,
-      start_time,
-      end_time,
-      status,
-      created_at,
-      customers (
-        name,
-        phone
-      ),
-      services (
-        name,
-        duration_minutes
-      )
-    `)
-    .order("start_time", { ascending: true });
+  /*
+   * Get the business timezone and locale.
+   *
+   * These values control how appointments are displayed.
+   *
+   * Example:
+   * America/New_York
+   * en-US
+   */
+  const {
+    data: business,
+    error: businessError,
+  } = await supabase
+    .from("businesses")
+    .select("timezone, locale")
+    .eq("id", profile.business_id)
+    .single();
+
+  if (businessError || !business) {
+    throw new Error(
+      "Failed to load business settings."
+    );
+  }
+
+  const { data: appointments, error } =
+    await supabase
+      .from("appointments")
+      .select(`
+        id,
+        start_time,
+        end_time,
+        status,
+        created_at,
+        customers (
+          name,
+          phone
+        ),
+        services (
+          name,
+          duration_minutes
+        )
+      `)
+      .order("start_time", {
+        ascending: true,
+      });
 
   if (error) {
     throw new Error(
@@ -90,6 +131,11 @@ export default async function DashboardAppointmentsPage() {
 
           <p className="mt-2 text-sm text-slate-500">
             Manage appointments scheduled by your AI receptionist.
+          </p>
+
+          <p className="mt-2 text-xs text-slate-400">
+            Times shown in the business timezone:{" "}
+            {business.timezone}
           </p>
         </div>
       </div>
@@ -151,24 +197,35 @@ export default async function DashboardAppointmentsPage() {
                           href={`/dashboard/appointments/${appointment.id}`}
                           className="font-semibold text-slate-900 hover:underline"
                         >
-                          {customer?.name ?? "Unknown customer"}
+                          {customer?.name ??
+                            "Unknown customer"}
                         </Link>
 
                         <p className="mt-1 text-xs text-slate-400">
-                          {customer?.phone ?? "No phone"}
+                          {customer?.phone ??
+                            "No phone"}
                         </p>
                       </td>
 
                       <td className="px-6 py-4 text-sm font-medium text-slate-800">
-                        {service?.name ?? "Unknown service"}
+                        {service?.name ??
+                          "Unknown service"}
                       </td>
 
                       <td className="px-6 py-4 text-sm text-slate-600">
-                        {formatDateTime(appointment.start_time)}
+                        {formatDateTime(
+                          appointment.start_time,
+                          business.timezone,
+                          business.locale
+                        )}
                       </td>
 
                       <td className="px-6 py-4 text-sm text-slate-600">
-                        {formatDateTime(appointment.end_time)}
+                        {formatDateTime(
+                          appointment.end_time,
+                          business.timezone,
+                          business.locale
+                        )}
                       </td>
 
                       <td className="px-6 py-4">
@@ -211,3 +268,4 @@ export default async function DashboardAppointmentsPage() {
     </div>
   );
 }
+

@@ -1,6 +1,11 @@
 import { createClient } from "@/lib/supabase/server";
 
 import type { ToolContext } from "./get-business-information";
+import { normalizePhone } from "./normalize-phone";
+
+export type FindCustomerInput = {
+  phone: string;
+};
 
 export type FindCustomerResult = {
   customer: {
@@ -14,25 +19,30 @@ export type FindCustomerResult = {
 
 export async function findCustomer(
   context: ToolContext,
-  phone: string
+  input: FindCustomerInput
 ): Promise<FindCustomerResult> {
   if (!context.businessId) {
-    throw new Error("Business context is required.");
+    throw new Error(
+      "Business context is required."
+    );
   }
 
-  const cleanPhone = phone.trim();
-
-  if (!cleanPhone) {
-    throw new Error("Phone number is required.");
-  }
+  const normalizedPhone = normalizePhone(
+    input.phone
+  );
 
   const supabase = await createClient();
 
   const { data, error } = await supabase
     .from("customers")
-    .select("id, name, phone, email, address")
-    .eq("business_id", context.businessId)
-    .eq("phone", cleanPhone)
+    .select(
+      "id, name, phone, email, address"
+    )
+    .eq(
+      "business_id",
+      context.businessId
+    )
+    .eq("phone", normalizedPhone)
     .maybeSingle();
 
   if (error) {
@@ -40,6 +50,14 @@ export async function findCustomer(
   }
 
   return {
-    customer: data ?? null,
+    customer: data
+      ? {
+          id: data.id,
+          name: data.name,
+          phone: data.phone,
+          email: data.email,
+          address: data.address,
+        }
+      : null,
   };
 }

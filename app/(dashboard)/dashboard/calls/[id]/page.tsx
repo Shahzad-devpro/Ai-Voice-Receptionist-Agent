@@ -3,19 +3,13 @@ import { notFound } from "next/navigation";
 
 import { getCurrentUser } from "@/lib/auth/get-current-user";
 import { createClient } from "@/lib/supabase/server";
+import { formatBusinessDateTime } from "@/lib/formatters/business-time";
 
 type CallDetailsPageProps = {
   params: Promise<{
     id: string;
   }>;
 };
-
-function formatDateTime(value: string) {
-  return new Date(value).toLocaleString("en-US", {
-    dateStyle: "full",
-    timeStyle: "short",
-  });
-}
 
 function formatDuration(seconds: number | null) {
   if (seconds === null || seconds === undefined) {
@@ -37,7 +31,10 @@ export default async function CallDetailsPage({
 
   const supabase = await createClient();
 
-  const { data: profile, error: profileError } = await supabase
+  const {
+    data: profile,
+    error: profileError,
+  } = await supabase
     .from("profiles")
     .select("business_id")
     .eq("id", user.id)
@@ -46,6 +43,21 @@ export default async function CallDetailsPage({
   if (profileError || !profile?.business_id) {
     throw new Error(
       "Your account is not assigned to a business."
+    );
+  }
+
+  const {
+    data: business,
+    error: businessError,
+  } = await supabase
+    .from("businesses")
+    .select("timezone, locale")
+    .eq("id", profile.business_id)
+    .single();
+
+  if (businessError || !business) {
+    throw new Error(
+      "Failed to load business settings."
     );
   }
 
@@ -79,6 +91,7 @@ export default async function CallDetailsPage({
       )
     `)
     .eq("id", id)
+    .eq("business_id", profile.business_id)
     .single();
 
   if (error || !call) {
@@ -93,7 +106,9 @@ export default async function CallDetailsPage({
     ? call.leads[0]
     : call.leads;
 
-  const appointment = Array.isArray(call.appointments)
+  const appointment = Array.isArray(
+    call.appointments
+  )
     ? call.appointments[0]
     : call.appointments;
 
@@ -118,7 +133,15 @@ export default async function CallDetailsPage({
           </h1>
 
           <p className="mt-2 text-sm text-slate-500">
-            {formatDateTime(call.started_at)}
+            {formatBusinessDateTime(
+              call.started_at,
+              business.timezone,
+              business.locale
+            )}
+          </p>
+
+          <p className="mt-1 text-xs text-slate-400">
+            Business timezone: {business.timezone}
           </p>
         </div>
       </div>
@@ -146,7 +169,9 @@ export default async function CallDetailsPage({
             </p>
 
             <p className="mt-2 text-sm font-medium text-slate-800">
-              {formatDuration(call.duration_seconds)}
+              {formatDuration(
+                call.duration_seconds
+              )}
             </p>
           </div>
 
@@ -156,7 +181,11 @@ export default async function CallDetailsPage({
             </p>
 
             <p className="mt-2 text-sm font-medium text-slate-800">
-              {formatDateTime(call.started_at)}
+              {formatBusinessDateTime(
+                call.started_at,
+                business.timezone,
+                business.locale
+              )}
             </p>
           </div>
 
@@ -180,7 +209,8 @@ export default async function CallDetailsPage({
 
         <div className="mt-5 rounded-xl bg-slate-50 p-5">
           <p className="whitespace-pre-wrap text-sm leading-7 text-slate-700">
-            {call.summary ?? "No summary available."}
+            {call.summary ??
+              "No summary available."}
           </p>
         </div>
       </section>
@@ -193,7 +223,8 @@ export default async function CallDetailsPage({
 
         <div className="mt-5 max-h-[600px] overflow-y-auto rounded-xl bg-slate-950 p-5">
           <pre className="whitespace-pre-wrap font-sans text-sm leading-7 text-slate-200">
-            {call.transcript ?? "No transcript available."}
+            {call.transcript ??
+              "No transcript available."}
           </pre>
         </div>
       </section>
@@ -277,7 +308,11 @@ export default async function CallDetailsPage({
           <div className="mt-5 flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
             <div>
               <p className="font-semibold text-slate-900">
-                {formatDateTime(appointment.start_time)}
+                {formatBusinessDateTime(
+                  appointment.start_time,
+                  business.timezone,
+                  business.locale
+                )}
               </p>
 
               <p className="mt-1 text-sm text-slate-500">

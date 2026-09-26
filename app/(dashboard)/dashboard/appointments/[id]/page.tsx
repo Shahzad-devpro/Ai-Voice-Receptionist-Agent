@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 
 import { getCurrentUser } from "@/lib/auth/get-current-user";
 import { createClient } from "@/lib/supabase/server";
+import { formatBusinessDateTime } from "@/lib/formatters/business-time";
 
 type AppointmentDetailsPageProps = {
   params: Promise<{
@@ -26,13 +27,6 @@ function getStatusClasses(status: string) {
   }
 }
 
-function formatDateTime(value: string) {
-  return new Date(value).toLocaleString("en-US", {
-    dateStyle: "full",
-    timeStyle: "short",
-  });
-}
-
 export default async function AppointmentDetailsPage({
   params,
 }: AppointmentDetailsPageProps) {
@@ -42,7 +36,16 @@ export default async function AppointmentDetailsPage({
 
   const supabase = await createClient();
 
-  const { data: profile, error: profileError } = await supabase
+  /*
+   * Get the authenticated user's business.
+   *
+   * The business is derived from the server-side profile.
+   * We never trust a business_id supplied by the browser.
+   */
+  const {
+    data: profile,
+    error: profileError,
+  } = await supabase
     .from("profiles")
     .select("business_id")
     .eq("id", user.id)
@@ -54,6 +57,43 @@ export default async function AppointmentDetailsPage({
     );
   }
 
+  /*
+   * Get business localization settings.
+   *
+   * timezone:
+   * Controls the timezone used to display appointments.
+   *
+   * locale:
+   * Controls date/time formatting.
+   *
+   * Example:
+   * America/New_York + en-US
+   * Europe/London + en-GB
+   * Europe/Paris + en-US
+   */
+  const {
+    data: business,
+    error: businessError,
+  } = await supabase
+    .from("businesses")
+    .select("timezone, locale")
+    .eq("id", profile.business_id)
+    .single();
+
+  if (businessError || !business) {
+    throw new Error(
+      "Failed to load business settings."
+    );
+  }
+
+  /*
+   * Load the appointment.
+   *
+   * RLS protects tenant isolation.
+   *
+   * We also explicitly scope the query to the authenticated
+   * user's business for defense in depth.
+   */
   const { data: appointment, error } = await supabase
     .from("appointments")
     .select(`
@@ -78,6 +118,7 @@ export default async function AppointmentDetailsPage({
       )
     `)
     .eq("id", id)
+    .eq("business_id", profile.business_id)
     .single();
 
   if (error || !appointment) {
@@ -114,7 +155,15 @@ export default async function AppointmentDetailsPage({
             </h1>
 
             <p className="mt-2 text-sm text-slate-500">
-              {formatDateTime(appointment.start_time)}
+              {formatBusinessDateTime(
+                appointment.start_time,
+                business.timezone,
+                business.locale
+              )}
+            </p>
+
+            <p className="mt-1 text-xs text-slate-400">
+              Business timezone: {business.timezone}
             </p>
           </div>
 
@@ -141,7 +190,11 @@ export default async function AppointmentDetailsPage({
             </p>
 
             <p className="mt-2 text-sm font-medium text-slate-800">
-              {formatDateTime(appointment.start_time)}
+              {formatBusinessDateTime(
+                appointment.start_time,
+                business.timezone,
+                business.locale
+              )}
             </p>
           </div>
 
@@ -151,7 +204,11 @@ export default async function AppointmentDetailsPage({
             </p>
 
             <p className="mt-2 text-sm font-medium text-slate-800">
-              {formatDateTime(appointment.end_time)}
+              {formatBusinessDateTime(
+                appointment.end_time,
+                business.timezone,
+                business.locale
+              )}
             </p>
           </div>
         </div>
@@ -240,7 +297,8 @@ export default async function AppointmentDetailsPage({
             </p>
 
             <p className="mt-2 text-sm leading-6 text-slate-600">
-              {service?.description ?? "No description available."}
+              {service?.description ??
+                "No description available."}
             </p>
           </div>
 
@@ -263,7 +321,7 @@ export default async function AppointmentDetailsPage({
               <p className="mt-2 text-sm font-medium text-slate-800">
                 {service?.price !== null &&
                 service?.price !== undefined
-                  ? `$${service.price}`
+                  ? `${business.locale.startsWith("en-US") ? "$" : ""}${service.price}`
                   : "Inspection / quote"}
               </p>
             </div>

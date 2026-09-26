@@ -1,34 +1,60 @@
+
 import Link from "next/link";
 
 import { getCurrentUser } from "@/lib/auth/get-current-user";
 import { createClient } from "@/lib/supabase/server";
+import { formatBusinessDate } from "@/lib/formatters/business-time";
 
 export default async function CustomersPage() {
   const user = await getCurrentUser();
 
   const supabase = await createClient();
 
-  const { data: profile, error: profileError } = await supabase
+  const {
+    data: profile,
+    error: profileError,
+  } = await supabase
     .from("profiles")
     .select("business_id")
     .eq("id", user.id)
     .single();
 
   if (profileError || !profile?.business_id) {
-    throw new Error("Your account is not assigned to a business.");
+    throw new Error(
+      "Your account is not assigned to a business."
+    );
   }
 
-  const { data: customers, error } = await supabase
-    .from("customers")
-    .select(`
-      id,
-      name,
-      phone,
-      email,
-      address,
-      created_at
-    `)
-    .order("created_at", { ascending: false });
+  const {
+    data: business,
+    error: businessError,
+  } = await supabase
+    .from("businesses")
+    .select("timezone, locale")
+    .eq("id", profile.business_id)
+    .single();
+
+  if (businessError || !business) {
+    throw new Error(
+      "Failed to load business settings."
+    );
+  }
+
+  const { data: customers, error } =
+    await supabase
+      .from("customers")
+      .select(`
+        id,
+        name,
+        phone,
+        email,
+        address,
+        created_at
+      `)
+      .eq("business_id", profile.business_id)
+      .order("created_at", {
+        ascending: false,
+      });
 
   if (error) {
     throw new Error(
@@ -54,6 +80,11 @@ export default async function CustomersPage() {
 
           <p className="mt-2 text-sm text-slate-500">
             Customers captured through your AI receptionist.
+          </p>
+
+          <p className="mt-2 text-xs text-slate-400">
+            Dates shown in business timezone:{" "}
+            {business.timezone}
           </p>
         </div>
       </div>
@@ -117,11 +148,11 @@ export default async function CustomersPage() {
                     </td>
 
                     <td className="px-6 py-4 text-sm text-slate-500">
-                      {new Date(
-                        customer.created_at
-                      ).toLocaleDateString("en-US", {
-                        dateStyle: "medium",
-                      })}
+                      {formatBusinessDate(
+                        customer.created_at,
+                        business.timezone,
+                        business.locale
+                      )}
                     </td>
 
                     <td className="px-6 py-4">
@@ -153,3 +184,4 @@ export default async function CustomersPage() {
     </div>
   );
 }
+
