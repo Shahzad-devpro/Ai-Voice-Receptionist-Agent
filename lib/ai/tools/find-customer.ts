@@ -27,11 +27,32 @@ export async function findCustomer(
     );
   }
 
-  const normalizedPhone = normalizePhone(
-    input.phone
-  );
-
   const supabase = await createClient();
+
+  const {
+    data: business,
+    error: businessError,
+  } = await supabase
+    .from("businesses")
+    .select("country")
+    .eq("id", context.businessId)
+    .single();
+
+  if (businessError || !business) {
+    console.error(
+      "Failed to load business country:",
+      businessError
+    );
+
+    throw new Error(
+      "Failed to load business information."
+    );
+  }
+
+  const normalizedPhone = normalizePhone(
+    input.phone,
+    business.country
+  );
 
   const { data, error } = await supabase
     .from("customers")
@@ -46,7 +67,14 @@ export async function findCustomer(
     .maybeSingle();
 
   if (error) {
-    throw new Error(error.message);
+    console.error(
+      "Failed to find customer:",
+      error
+    );
+
+    throw new Error(
+      "Failed to find customer."
+    );
   }
 
   return {

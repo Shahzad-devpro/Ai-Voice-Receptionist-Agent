@@ -3,6 +3,7 @@ import { getServices } from "./get-services";
 import { searchKnowledgeBase } from "./search-knowledge-base";
 import { findCustomer } from "./find-customer";
 import { createCustomer } from "./create-customer";
+import { updateCustomer } from "./update-customer";
 import { createLead } from "./create-lead";
 import { checkAvailability } from "./check-availability";
 import { bookAppointment } from "./book-appointment";
@@ -10,7 +11,8 @@ import { saveCall } from "./save-call";
 
 import type { ToolContext } from "./get-business-information";
 
-type ToolArguments = Record<string, unknown>;
+type ToolArguments =
+  Record<string, unknown>;
 
 export async function executeTool(
   context: ToolContext,
@@ -19,7 +21,9 @@ export async function executeTool(
 ) {
   switch (toolName) {
     case "getBusinessInformation":
-      return getBusinessInformation(context);
+      return getBusinessInformation(
+        context
+      );
 
     case "getServices":
       return getServices(context);
@@ -27,29 +31,56 @@ export async function executeTool(
     case "searchKnowledgeBase":
       return searchKnowledgeBase(
         context,
-        requireString(args.query, "query")
+        requireString(
+          args.query,
+          "query"
+        )
       );
 
     case "findCustomer": {
-  const phone = args.phone;
+      const phone = args.phone;
 
-  if (typeof phone !== "string") {
-    throw new Error(
-      "findCustomer requires a phone number."
-    );
-  }
+      if (typeof phone !== "string") {
+        throw new Error(
+          "findCustomer requires a phone number."
+        );
+      }
 
-  return findCustomer(context, {
-    phone,
-  });
-}
+      return findCustomer(context, {
+        phone,
+      });
+    }
 
     case "createCustomer":
       return createCustomer(context, {
-        name: requireString(args.name, "name"),
-        phone: requireString(args.phone, "phone"),
-        email: optionalString(args.email),
-        address: optionalString(args.address),
+        name: requireString(
+          args.name,
+          "name"
+        ),
+        phone: requireString(
+          args.phone,
+          "phone"
+        ),
+        email:
+          optionalString(args.email),
+        address:
+          optionalString(args.address),
+      });
+
+    case "updateCustomer":
+      return updateCustomer(context, {
+        customerId: requireString(
+          args.customerId,
+          "customerId"
+        ),
+        name:
+          optionalString(args.name),
+        phone:
+          optionalString(args.phone),
+        email:
+          optionalString(args.email),
+        address:
+          optionalString(args.address),
       });
 
     case "createLead":
@@ -58,62 +89,102 @@ export async function executeTool(
           args.customerId,
           "customerId"
         ),
-        serviceRequested: requireString(
-          args.serviceRequested,
-          "serviceRequested"
-        ),
-        description: optionalString(args.description),
+        serviceRequested:
+          requireString(
+            args.serviceRequested,
+            "serviceRequested"
+          ),
+        description:
+          optionalString(
+            args.description
+          ),
       });
 
     case "checkAvailability":
-      return checkAvailability(context, {
-        serviceId: requireString(
-          args.serviceId,
-          "serviceId"
-        ),
-        requestedDate: requireString(
-          args.requestedDate,
-          "requestedDate"
-        ),
-        requestedTime: requireString(
-          args.requestedTime,
-          "requestedTime"
-        ),
-      });
+      return checkAvailability(
+        context,
+        {
+          serviceId: requireString(
+            args.serviceId,
+            "serviceId"
+          ),
+          requestedDate:
+            requireString(
+              args.requestedDate,
+              "requestedDate"
+            ),
+          requestedTime:
+            requireString(
+              args.requestedTime,
+              "requestedTime"
+            ),
+        }
+      );
 
     case "bookAppointment":
-      return bookAppointment(context, {
-        serviceId: requireString(
-          args.serviceId,
-          "serviceId"
-        ),
-        customerId: requireString(
-          args.customerId,
-          "customerId"
-        ),
-        startTime: requireString(
-          args.startTime,
-          "startTime"
-        ),
-      });
+      return bookAppointment(
+        context,
+        {
+          serviceId: requireString(
+            args.serviceId,
+            "serviceId"
+          ),
+          customerId: requireString(
+            args.customerId,
+            "customerId"
+          ),
+          startTime: requireString(
+            args.startTime,
+            "startTime"
+          ),
+        }
+      );
 
-          case "saveCall":
+    case "saveCall":
       return saveCall(context, {
-        callerPhone: optionalString(args.callerPhone),
-        customerId: optionalString(args.customerId),
-        transcript: optionalString(args.transcript),
-        summary: optionalString(args.summary),
-        outcome: optionalString(args.outcome),
-        appointmentId: optionalString(
-          args.appointmentId
-        ),
-        leadId: optionalString(args.leadId),
+        callerPhone:
+          optionalString(
+            args.callerPhone
+          ),
+        customerId:
+          optionalString(
+            args.customerId
+          ),
+        transcript:
+          optionalString(
+            args.transcript
+          ),
+        summary:
+          optionalString(
+            args.summary
+          ),
+        outcome:
+          optionalString(
+            args.outcome
+          ),
+        appointmentId:
+          optionalString(
+            args.appointmentId
+          ),
+        leadId:
+          optionalString(
+            args.leadId
+          ),
         durationSeconds:
-          args.durationSeconds === undefined
+          args.durationSeconds ===
+          undefined
             ? undefined
-            : Number(args.durationSeconds),
-        startedAt: optionalString(args.startedAt),
-        endedAt: optionalString(args.endedAt),
+            : Number(
+                args.durationSeconds
+              ),
+        startedAt:
+          optionalString(
+            args.startedAt
+          ),
+        endedAt:
+          optionalString(
+            args.endedAt
+          ),
       });
 
     default:
@@ -127,7 +198,10 @@ function requireString(
   value: unknown,
   fieldName: string
 ): string {
-  if (typeof value !== "string" || !value.trim()) {
+  if (
+    typeof value !== "string" ||
+    !value.trim()
+  ) {
     throw new Error(
       `Tool argument "${fieldName}" is required.`
     );
@@ -139,11 +213,17 @@ function requireString(
 function optionalString(
   value: unknown
 ): string | undefined {
-  if (typeof value !== "string") {
+  if (
+    typeof value !== "string"
+  ) {
     return undefined;
   }
 
-  const valueTrimmed = value.trim();
+  const valueTrimmed =
+    value.trim();
 
-  return valueTrimmed || undefined;
+  return (
+    valueTrimmed || undefined
+  );
 }
+

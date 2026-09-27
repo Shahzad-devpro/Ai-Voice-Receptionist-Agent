@@ -7,6 +7,19 @@ import { startMicrophone } from "@/lib/ai/audio/microphone";
 import { startAudioCapture } from "@/lib/ai/audio/capture";
 import { createAudioPlayback } from "@/lib/ai/audio/playback";
 
+type TestBusiness = {
+  id: string;
+  name: string;
+  industry: string;
+  status: string;
+};
+
+type VoiceTestProps = {
+  businesses: TestBusiness[];
+  initialBusinessId: string;
+  isPlatformAdmin: boolean;
+};
+
 type LiveSession = {
   sendRealtimeInput: (input: {
     audio: {
@@ -64,7 +77,11 @@ type TranscriptEntry = {
   text: string;
 };
 
-export default function VoiceTest() {
+export default function VoiceTest({
+  businesses,
+  initialBusinessId,
+  isPlatformAdmin,
+}: VoiceTestProps) {
   const microphoneRef = useRef<{
     stop: () => void;
   } | null>(null);
@@ -73,59 +90,39 @@ export default function VoiceTest() {
     stop: () => void;
   } | null>(null);
 
-  const sessionRef =
-    useRef<LiveSession | null>(null);
+  const sessionRef = useRef<LiveSession | null>(null);
 
   const playbackRef = useRef<{
     play: (base64Audio: string) => void;
     stop: () => void;
   } | null>(null);
 
-  const sessionIdRef =
-    useRef<string | null>(null);
+  const sessionIdRef = useRef<string | null>(null);
 
-  const chunkCountRef =
-    useRef(0);
+  const chunkCountRef = useRef(0);
 
-  /*
-   * Store the complete conversation as
-   * speaker-separated transcript entries.
-   *
-   * Consecutive transcription events from
-   * the same speaker are merged.
-   */
-  const transcriptRef =
-    useRef<TranscriptEntry[]>([]);
+  const transcriptRef = useRef<TranscriptEntry[]>([]);
 
-  /*
-   * Prevent multiple finalize requests
-   * from running at the same time.
-   */
-  const finalizingRef =
-    useRef(false);
+  const finalizingRef = useRef(false);
 
-  /*
-   * Indicates that the user intentionally
-   * stopped the voice session.
-   */
-  const intentionalCloseRef =
-    useRef(false);
+  const intentionalCloseRef = useRef(false);
 
-  /*
-   * Prevent multiple disconnect handlers
-   * from attempting to fail the same session.
-   */
-  const disconnectHandledRef =
-    useRef(false);
+  const disconnectHandledRef = useRef(false);
 
-  const [status, setStatus] =
-    useState("Idle");
+  const [status, setStatus] = useState("Idle");
 
-  const [chunkCount, setChunkCount] =
-    useState(0);
+  const [chunkCount, setChunkCount] = useState(0);
 
-  const [sessionId, setSessionId] =
-    useState<string | null>(null);
+  const [sessionId, setSessionId] = useState<string | null>(null);
+
+  const [isSessionActive, setIsSessionActive] = useState(false);
+
+  const [isFinalizing, setIsFinalizing] = useState(false);
+
+  const [isStarting, setIsStarting] = useState(false);
+
+  const [selectedBusinessId, setSelectedBusinessId] =
+    useState(initialBusinessId);
 
   function appendTranscript(
     speaker: TranscriptSpeaker,
@@ -137,31 +134,13 @@ export default function VoiceTest() {
       return;
     }
 
-    const transcript =
-      transcriptRef.current;
+    const transcript = transcriptRef.current;
 
-    const lastEntry =
-      transcript[transcript.length - 1];
+    const lastEntry = transcript[transcript.length - 1];
 
-    /*
-     * Gemini may send transcription
-     * fragments separately.
-     *
-     * Merge consecutive fragments from
-     * the same speaker instead of creating
-     * a new transcript line for every event.
-     */
-    if (
-      lastEntry &&
-      lastEntry.speaker === speaker
-    ) {
-      const existingText =
-        lastEntry.text.trim();
+    if (lastEntry && lastEntry.speaker === speaker) {
+      const existingText = lastEntry.text.trim();
 
-      /*
-       * Avoid adding the exact same
-       * transcription fragment twice.
-       */
       if (
         existingText === cleaned ||
         existingText.endsWith(cleaned)
@@ -169,25 +148,12 @@ export default function VoiceTest() {
         return;
       }
 
-      /*
-       * If the new transcription contains
-       * the previous text as part of a longer
-       * cumulative transcription, replace it
-       * rather than duplicating it.
-       */
-      if (
-        cleaned.startsWith(existingText)
-      ) {
+      if (cleaned.startsWith(existingText)) {
         lastEntry.text = cleaned;
         return;
       }
 
-      /*
-       * Otherwise append the new fragment
-       * to the current speaker's turn.
-       */
-      lastEntry.text =
-        `${existingText} ${cleaned}`.trim();
+      lastEntry.text = `${existingText} ${cleaned}`.trim();
 
       return;
     }
@@ -211,21 +177,27 @@ export default function VoiceTest() {
     failedSessionId: string
   ) {
     try {
-      await fetch(
+      const response = await fetch(
         "/api/ai/live/session",
         {
           method: "POST",
           headers: {
-            "Content-Type":
-              "application/json",
+            "Content-Type": "application/json",
           },
           body: JSON.stringify({
             action: "fail",
-            sessionId:
-              failedSessionId,
+            sessionId: failedSessionId,
+            businessId: selectedBusinessId,
           }),
         }
       );
+
+      if (!response.ok) {
+        console.error(
+          "Failed to mark voice session as FAILED:",
+          await response.text()
+        );
+      }
     } catch (error) {
       console.error(
         "Failed to mark voice session as FAILED:",
@@ -246,11 +218,9 @@ export default function VoiceTest() {
     }
 
     for (const functionCall of functionCalls) {
-      const toolName =
-        functionCall.name;
+      const toolName = functionCall.name;
 
-      const toolCallId =
-        functionCall.id;
+      const toolCallId = functionCall.id;
 
       if (!toolName || !toolCallId) {
         console.error(
@@ -262,32 +232,48 @@ export default function VoiceTest() {
       }
 
       try {
-        setStatus(
-          `Running ${toolName}...`
+        setStatus(`Running ${toolName}...`);
+
+        /*
+         * Log the exact tool arguments during development.
+         *
+         * This is especially important for appointment
+         * debugging because the server must receive the
+         * exact date/time selected by the customer.
+         */
+        console.log(
+          "Gemini Live tool call:",
+          {
+            toolName,
+            args: functionCall.args ?? {},
+            businessId: selectedBusinessId,
+            sessionId: sessionIdRef.current,
+          }
         );
 
-        const response =
-          await fetch(
-            "/api/ai/live/tool",
-            {
-              method: "POST",
-              headers: {
-                "Content-Type":
-                  "application/json",
-              },
-              body: JSON.stringify({
-                sessionId:
-                  sessionIdRef.current,
+        const response = await fetch(
+          "/api/ai/live/tool",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              sessionId:
+                sessionIdRef.current,
 
-                toolCall: {
-                  name: toolName,
-                  args:
-                    functionCall.args ??
-                    {},
-                },
-              }),
-            }
-          );
+              businessId:
+                selectedBusinessId,
+
+              toolCall: {
+                name: toolName,
+                args:
+                  functionCall.args ??
+                  {},
+              },
+            }),
+          }
+        );
 
         const data =
           await response.json();
@@ -302,9 +288,15 @@ export default function VoiceTest() {
           );
         }
 
-        if (
-          finalizingRef.current
-        ) {
+        console.log(
+          "Gemini Live tool result:",
+          {
+            toolName,
+            result: data.result,
+          }
+        );
+
+        if (finalizingRef.current) {
           return;
         }
 
@@ -313,7 +305,8 @@ export default function VoiceTest() {
             {
               id: toolCallId,
               name: toolName,
-              response: data.result,
+              response:
+                data.result,
             },
           ],
         });
@@ -333,9 +326,7 @@ export default function VoiceTest() {
           error
         );
 
-        if (
-          finalizingRef.current
-        ) {
+        if (finalizingRef.current) {
           continue;
         }
 
@@ -347,7 +338,8 @@ export default function VoiceTest() {
                 name: toolName,
                 response: {
                   error:
-                    error instanceof Error
+                    error instanceof
+                    Error
                       ? error.message
                       : "Tool execution failed.",
                 },
@@ -361,9 +353,7 @@ export default function VoiceTest() {
           );
         }
 
-        if (
-          !finalizingRef.current
-        ) {
+        if (!finalizingRef.current) {
           setStatus(
             "Tool execution failed"
           );
@@ -373,7 +363,10 @@ export default function VoiceTest() {
   }
 
   async function start() {
-    if (sessionRef.current) {
+    if (
+      sessionRef.current ||
+      isSessionActive
+    ) {
       setStatus(
         "Voice agent is already running."
       );
@@ -381,7 +374,10 @@ export default function VoiceTest() {
       return;
     }
 
-    if (finalizingRef.current) {
+    if (
+      finalizingRef.current ||
+      isFinalizing
+    ) {
       setStatus(
         "Previous voice session is still finalizing."
       );
@@ -389,10 +385,21 @@ export default function VoiceTest() {
       return;
     }
 
+    if (isStarting) {
+      return;
+    }
+
+    if (!selectedBusinessId) {
+      setStatus(
+        "Please select a business before starting the voice agent."
+      );
+
+      return;
+    }
+
+    setIsStarting(true);
+
     try {
-      /*
-       * Reset lifecycle state.
-       */
       intentionalCloseRef.current =
         false;
 
@@ -420,6 +427,8 @@ export default function VoiceTest() {
             },
             body: JSON.stringify({
               action: "create",
+              businessId:
+                selectedBusinessId,
             }),
           }
         );
@@ -454,7 +463,9 @@ export default function VoiceTest() {
 
       const configResponse =
         await fetch(
-          "/api/ai/live/config"
+          `/api/ai/live/config?businessId=${encodeURIComponent(
+            selectedBusinessId
+          )}`
         );
 
       const configData =
@@ -482,10 +493,8 @@ export default function VoiceTest() {
       const session =
         await createLiveSession(
           configData.systemInstruction,
+          selectedBusinessId,
 
-          /*
-           * Gemini Live opened.
-           */
           () => {
             if (
               !finalizingRef.current
@@ -496,9 +505,6 @@ export default function VoiceTest() {
             }
           },
 
-          /*
-           * Gemini Live message.
-           */
           (message) => {
             console.log(
               "Live message:",
@@ -508,19 +514,12 @@ export default function VoiceTest() {
             const liveMessage =
               message as LiveMessage;
 
-            /*
-             * Ignore late messages after
-             * finalization has started.
-             */
             if (
               finalizingRef.current
             ) {
               return;
             }
 
-            /*
-             * Capture customer speech.
-             */
             const inputText =
               liveMessage
                 .serverContent
@@ -538,9 +537,6 @@ export default function VoiceTest() {
               );
             }
 
-            /*
-             * Capture AI speech.
-             */
             const outputText =
               liveMessage
                 .serverContent
@@ -558,9 +554,6 @@ export default function VoiceTest() {
               );
             }
 
-            /*
-             * Play Gemini's audio response.
-             */
             const parts =
               liveMessage
                 .serverContent
@@ -569,7 +562,8 @@ export default function VoiceTest() {
 
             for (const part of parts) {
               const audioData =
-                part.inlineData?.data;
+                part.inlineData
+                  ?.data;
 
               if (!audioData) {
                 continue;
@@ -580,9 +574,6 @@ export default function VoiceTest() {
               );
             }
 
-            /*
-             * Handle Gemini tool calls.
-             */
             if (
               liveMessage.toolCall
             ) {
@@ -604,9 +595,6 @@ export default function VoiceTest() {
             }
           },
 
-          /*
-           * Gemini Live error.
-           */
           (error) => {
             console.error(
               "Gemini Live error:",
@@ -622,17 +610,11 @@ export default function VoiceTest() {
             }
           },
 
-          /*
-           * Gemini Live closed.
-           */
           () => {
             console.log(
               "Gemini Live connection closed."
             );
 
-            /*
-             * Normal Stop or finalization.
-             */
             if (
               intentionalCloseRef.current ||
               finalizingRef.current
@@ -640,9 +622,6 @@ export default function VoiceTest() {
               return;
             }
 
-            /*
-             * Prevent duplicate failure handling.
-             */
             if (
               disconnectHandledRef.current
             ) {
@@ -655,9 +634,15 @@ export default function VoiceTest() {
             const disconnectedSessionId =
               sessionIdRef.current;
 
-            if (!disconnectedSessionId) {
+            if (
+              !disconnectedSessionId
+            ) {
               setStatus(
                 "Gemini Live disconnected"
+              );
+
+              setIsSessionActive(
+                false
               );
 
               return;
@@ -667,9 +652,6 @@ export default function VoiceTest() {
               "Gemini Live disconnected unexpectedly"
             );
 
-            /*
-             * Stop local audio resources.
-             */
             captureRef.current?.stop();
 
             microphoneRef.current?.stop();
@@ -678,15 +660,17 @@ export default function VoiceTest() {
 
             captureRef.current = null;
 
-            microphoneRef.current = null;
+            microphoneRef.current =
+              null;
 
             playbackRef.current = null;
 
             sessionRef.current = null;
 
-            /*
-             * Mark database session as FAILED.
-             */
+            setIsSessionActive(
+              false
+            );
+
             void markSessionFailed(
               disconnectedSessionId
             );
@@ -696,12 +680,15 @@ export default function VoiceTest() {
 
             setSessionId(null);
 
-            transcriptRef.current = [];
+            transcriptRef.current =
+              [];
           }
         );
 
       sessionRef.current =
         session;
+
+      setIsSessionActive(true);
 
       setStatus(
         "Starting microphone..."
@@ -764,10 +751,6 @@ export default function VoiceTest() {
         error
       );
 
-      /*
-       * Stop resources that may
-       * already have started.
-       */
       captureRef.current?.stop();
 
       microphoneRef.current?.stop();
@@ -778,16 +761,15 @@ export default function VoiceTest() {
 
       captureRef.current = null;
 
-      microphoneRef.current = null;
+      microphoneRef.current =
+        null;
 
       playbackRef.current = null;
 
       sessionRef.current = null;
 
-      /*
-       * Mark database session as FAILED
-       * if one was already created.
-       */
+      setIsSessionActive(false);
+
       const failedSessionId =
         sessionIdRef.current;
 
@@ -797,8 +779,7 @@ export default function VoiceTest() {
         );
       }
 
-      sessionIdRef.current =
-        null;
+      sessionIdRef.current = null;
 
       setSessionId(null);
 
@@ -807,14 +788,12 @@ export default function VoiceTest() {
           ? error.message
           : "Failed to start voice agent."
       );
+    } finally {
+      setIsStarting(false);
     }
   }
 
   async function stop() {
-    /*
-     * Prevent two Stop clicks from
-     * starting two finalize requests.
-     */
     if (finalizingRef.current) {
       return;
     }
@@ -830,13 +809,10 @@ export default function VoiceTest() {
       return;
     }
 
-    finalizingRef.current =
-      true;
+    finalizingRef.current = true;
 
-    /*
-     * Tell Gemini's onclose handler
-     * this is an intentional close.
-     */
+    setIsFinalizing(true);
+
     intentionalCloseRef.current =
       true;
 
@@ -845,9 +821,6 @@ export default function VoiceTest() {
         "Finalizing voice session..."
       );
 
-      /*
-       * Stop browser audio.
-       */
       captureRef.current?.stop();
 
       microphoneRef.current?.stop();
@@ -856,28 +829,20 @@ export default function VoiceTest() {
 
       captureRef.current = null;
 
-      microphoneRef.current = null;
+      microphoneRef.current =
+        null;
 
       playbackRef.current = null;
 
-      /*
-       * Close Gemini Live.
-       */
       sessionRef.current?.close();
 
       sessionRef.current = null;
 
-      /*
-       * Build the transcript before
-       * clearing the session state.
-       */
+      setIsSessionActive(false);
+
       const transcript =
         buildTranscript();
 
-      /*
-       * Send the completed session
-       * to the server.
-       */
       const response =
         await fetch(
           "/api/ai/live/session/finalize",
@@ -890,7 +855,8 @@ export default function VoiceTest() {
             body: JSON.stringify({
               sessionId:
                 currentSessionId,
-
+              businessId:
+                selectedBusinessId,
               transcript,
             }),
           }
@@ -931,8 +897,9 @@ export default function VoiceTest() {
           : "Failed to finalize voice session."
       );
     } finally {
-      finalizingRef.current =
-        false;
+      finalizingRef.current = false;
+
+      setIsFinalizing(false);
 
       intentionalCloseRef.current =
         false;
@@ -940,8 +907,7 @@ export default function VoiceTest() {
       disconnectHandledRef.current =
         false;
 
-      sessionIdRef.current =
-        null;
+      sessionIdRef.current = null;
 
       setSessionId(null);
 
@@ -959,6 +925,60 @@ export default function VoiceTest() {
         <p className="mt-2 text-slate-600">
           Browser microphone → Gemini Live
         </p>
+
+        {isPlatformAdmin && (
+          <div className="mt-6">
+            <label
+              htmlFor="business"
+              className="block text-sm font-medium text-slate-700"
+            >
+              Test Business
+            </label>
+
+            <select
+              id="business"
+              value={
+                selectedBusinessId
+              }
+              onChange={(event) =>
+                setSelectedBusinessId(
+                  event.target.value
+                )
+              }
+              disabled={
+                isSessionActive ||
+                isFinalizing ||
+                isStarting
+              }
+              className="mt-2 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 disabled:cursor-not-allowed disabled:bg-slate-100"
+            >
+              <option value="">
+                Select a business
+              </option>
+
+              {businesses.map(
+                (business) => (
+                  <option
+                    key={business.id}
+                    value={
+                      business.id
+                    }
+                  >
+                    {business.name} —{" "}
+                    {business.industry}
+                  </option>
+                )
+              )}
+            </select>
+
+            {businesses.length ===
+              0 && (
+              <p className="mt-2 text-sm text-red-600">
+                No businesses are available.
+              </p>
+            )}
+          </div>
+        )}
 
         <div className="mt-6 rounded-lg bg-slate-100 p-4">
           <p>
@@ -980,21 +1000,33 @@ export default function VoiceTest() {
             {sessionId ??
               "Not started"}
           </p>
+
+          <p className="mt-2 break-all text-sm">
+            <strong>
+              Business:
+            </strong>{" "}
+            {selectedBusinessId ||
+              "Not selected"}
+          </p>
         </div>
 
         <div className="mt-6 flex gap-3">
           <button
             type="button"
-            onClick={start}
+            onClick={() => {
+              void start();
+            }}
             disabled={
-              Boolean(
-                sessionRef.current
-              ) ||
-              finalizingRef.current
+              isSessionActive ||
+              isFinalizing ||
+              isStarting ||
+              !selectedBusinessId
             }
             className="rounded-lg bg-black px-4 py-2 text-white disabled:cursor-not-allowed disabled:opacity-50"
           >
-            Start Voice Agent
+            {isStarting
+              ? "Starting..."
+              : "Start Voice Agent"}
           </button>
 
           <button
@@ -1004,11 +1036,13 @@ export default function VoiceTest() {
             }}
             disabled={
               !sessionId ||
-              finalizingRef.current
+              isFinalizing
             }
             className="rounded-lg border px-4 py-2 disabled:cursor-not-allowed disabled:opacity-50"
           >
-            Stop
+            {isFinalizing
+              ? "Stopping..."
+              : "Stop"}
           </button>
         </div>
       </div>

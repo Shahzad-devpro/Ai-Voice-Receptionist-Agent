@@ -16,16 +16,13 @@ export async function GET() {
       model: AI_MODEL,
       response: response.text,
     });
-  } catch (error) {
+    } catch (error) {
     console.error("Gemini test failed:", error);
 
     return NextResponse.json(
       {
         success: false,
-        error:
-          error instanceof Error
-            ? error.message
-            : "Gemini API request failed.",
+        error: "Gemini API request failed.",
       },
       { status: 500 }
     );

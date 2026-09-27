@@ -253,7 +253,7 @@ export default function NewBusinessPage() {
 
           <p className="mt-1 text-sm text-slate-500">
             These instructions will later be provided to the
-            business's AI receptionist.
+            business&apos;s AI receptionist.
           </p>
 
           <textarea

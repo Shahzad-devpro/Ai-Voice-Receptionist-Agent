@@ -75,11 +75,13 @@ export default async function LeadsPage() {
     .eq("business_id", profile.business_id)
     .order("created_at", { ascending: false });
 
-  if (error) {
-    throw new Error(
-      `Failed to load leads: ${error.message}`
-    );
-  }
+ if (error) {
+  console.error("Failed to load leads:", error);
+
+  throw new Error(
+    "Failed to load leads."
+  );
+}
 
   return (
     <div>

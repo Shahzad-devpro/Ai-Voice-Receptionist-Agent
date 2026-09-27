@@ -77,8 +77,15 @@ export async function saveCall(
         .maybeSingle();
 
     if (error) {
-      throw new Error(error.message);
-    }
+  console.error(
+    "Failed to verify call customer:",
+    error
+  );
+
+  throw new Error(
+    "Failed to verify customer."
+  );
+}
 
     if (!customer) {
       throw new Error(
@@ -95,10 +102,16 @@ export async function saveCall(
         .eq("id", appointmentId)
         .eq("business_id", context.businessId)
         .maybeSingle();
+if (error) {
+  console.error(
+    "Failed to verify call appointment:",
+    error
+  );
 
-    if (error) {
-      throw new Error(error.message);
-    }
+  throw new Error(
+    "Failed to verify appointment."
+  );
+}
 
     if (!appointment) {
       throw new Error(
@@ -117,8 +130,15 @@ export async function saveCall(
         .maybeSingle();
 
     if (error) {
-      throw new Error(error.message);
-    }
+  console.error(
+    "Failed to verify call lead:",
+    error
+  );
+
+  throw new Error(
+    "Failed to verify lead."
+  );
+}
 
     if (!lead) {
       throw new Error(
@@ -160,10 +180,15 @@ export async function saveCall(
     .single();
 
   if (error || !data) {
-    throw new Error(
-      error?.message ?? "Failed to save call."
-    );
-  }
+  console.error(
+    "Failed to save call:",
+    error
+  );
+
+  throw new Error(
+    "Failed to save call."
+  );
+}
 
   return {
     call: {

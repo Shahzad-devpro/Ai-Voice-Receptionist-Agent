@@ -1,20 +1,27 @@
 import { NextResponse } from "next/server";
 
 import { getAgentContext } from "@/lib/ai/get-agent-context";
+
 import {
   completeVoiceSession,
   getVoiceSession,
 } from "@/lib/ai/voice-session";
+
 import { createClient } from "@/lib/supabase/server";
 import { gemini } from "@/lib/ai/gemini";
 import { AI_MODEL } from "@/lib/ai/config";
+
+export const runtime = "nodejs";
 
 function calculateDurationSeconds(
   startedAt: string,
   endedAt: string
 ): number {
-  const startedMs = new Date(startedAt).getTime();
-  const endedMs = new Date(endedAt).getTime();
+  const startedMs =
+    new Date(startedAt).getTime();
+
+  const endedMs =
+    new Date(endedAt).getTime();
 
   if (
     !Number.isFinite(startedMs) ||
@@ -27,7 +34,9 @@ function calculateDurationSeconds(
 
   return Math.max(
     0,
-    Math.floor((endedMs - startedMs) / 1000)
+    Math.floor(
+      (endedMs - startedMs) / 1000
+    )
   );
 }
 
@@ -38,7 +47,8 @@ function cleanTranscript(
     return null;
   }
 
-  const cleaned = transcript.trim();
+  const cleaned =
+    transcript.trim();
 
   if (!cleaned) {
     return null;
@@ -66,18 +76,21 @@ async function generateCallNotes(
     const response =
       await gemini.models.generateContent({
         model: AI_MODEL,
+
         contents: `
 You are creating concise internal call notes for a business owner.
 
 Analyze the receptionist call transcript and return ONLY valid JSON.
 
 Required JSON format:
+
 {
   "summary": "short factual summary",
   "shortTranscript": "short dialogue excerpt"
 }
 
 SUMMARY RULES:
+
 - 1 to 3 short sentences.
 - Maximum 40 words.
 - Focus on the customer's request, important details, actions taken, appointment information, and outcome.
@@ -86,6 +99,7 @@ SUMMARY RULES:
 - Do not invent information.
 
 SHORT TRANSCRIPT RULES:
+
 - Maximum 6 lines.
 - Include ONLY the most important exchanges.
 - Each line must begin with either "Customer:" or "AI:".
@@ -97,9 +111,16 @@ SHORT TRANSCRIPT RULES:
 - If there is very little useful conversation, return only the useful lines.
 
 Example:
+
 {
   "summary": "Customer requested a service appointment and booked a Monday 10 AM slot.",
-  "shortTranscript": "Customer: Requested service appointment.\\nAI: Confirmed availability.\\nCustomer: Chose Monday at 10 AM.\\nAI: Confirmed appointment."
+  "shortTranscript": "Customer: Requested service appointment.
+
+AI: Confirmed availability.
+
+Customer: Chose Monday at 10 AM.
+
+AI: Confirmed appointment."
 }
 
 Return JSON only.
@@ -125,13 +146,16 @@ ${transcript}
     try {
       parsed = JSON.parse(rawText);
     } catch {
+      /*
+       * Gemini may occasionally wrap JSON in
+       * markdown or surrounding text.
+       */
       const jsonMatch =
         rawText.match(/\{[\s\S]*\}/);
 
       if (!jsonMatch) {
         console.error(
-          "Gemini returned invalid call notes JSON:",
-          rawText
+          "Gemini returned invalid call notes JSON."
         );
 
         return {
@@ -146,8 +170,7 @@ ${transcript}
         );
       } catch {
         console.error(
-          "Failed to parse Gemini call notes:",
-          rawText
+          "Failed to parse Gemini call notes JSON."
         );
 
         return {
@@ -174,8 +197,7 @@ ${transcript}
       >;
 
     const summary =
-      typeof result.summary ===
-      "string"
+      typeof result.summary === "string"
         ? result.summary.trim()
         : null;
 
@@ -200,7 +222,7 @@ ${transcript}
     };
   } catch (error) {
     /*
-     * AI note generation must never
+     * AI note generation must NEVER
      * prevent the call from being saved.
      */
     console.error(
@@ -217,32 +239,72 @@ ${transcript}
 
 type FinalizeRequest = {
   sessionId?: unknown;
+  businessId?: unknown;
   transcript?: unknown;
 };
+
+function getString(
+  value: unknown
+): string | undefined {
+  if (typeof value !== "string") {
+    return undefined;
+  }
+
+  const trimmed = value.trim();
+
+  return trimmed || undefined;
+}
+
+function getRecord(
+  value: unknown
+): Record<string, unknown> {
+  if (
+    typeof value !== "object" ||
+    value === null ||
+    Array.isArray(value)
+  ) {
+    return {};
+  }
+
+  return value as Record<
+    string,
+    unknown
+  >;
+}
 
 function mapCallResponse(
   call: Record<string, unknown>
 ) {
   return {
     id: call.id,
+
     customerId:
       call.customer_id,
+
     callerPhone:
       call.caller_phone,
+
     durationSeconds:
       call.duration_seconds,
+
     transcript:
       call.transcript,
+
     summary:
       call.summary,
+
     outcome:
       call.outcome,
+
     appointmentId:
       call.appointment_id,
+
     leadId:
       call.lead_id,
+
     startedAt:
       call.started_at,
+
     endedAt:
       call.ended_at,
   };
@@ -260,21 +322,19 @@ async function getExistingCall(
     error,
   } = await supabase
     .from("calls")
-    .select(
-      `
-        id,
-        customer_id,
-        caller_phone,
-        duration_seconds,
-        transcript,
-        summary,
-        outcome,
-        appointment_id,
-        lead_id,
-        started_at,
-        ended_at
-      `
-    )
+    .select(`
+      id,
+      customer_id,
+      caller_phone,
+      duration_seconds,
+      transcript,
+      summary,
+      outcome,
+      appointment_id,
+      lead_id,
+      started_at,
+      ended_at
+    `)
     .eq(
       "voice_session_id",
       sessionId
@@ -286,8 +346,13 @@ async function getExistingCall(
     .maybeSingle();
 
   if (error) {
+    console.error(
+      "Failed to check existing call:",
+      error
+    );
+
     throw new Error(
-      `Failed to check existing call: ${error.message}`
+      "Failed to check existing call."
     );
   }
 
@@ -298,22 +363,41 @@ export async function POST(
   request: Request
 ) {
   try {
-    const context =
-      await getAgentContext();
-
-    const supabase =
-      await createClient();
-
+    /*
+     * Parse the request body FIRST.
+     *
+     * PLATFORM_ADMIN requires an explicit
+     * business context.
+     */
     const body =
       (await request
         .json()
         .catch(() => ({}))) as FinalizeRequest;
 
+    const businessId =
+      getString(body.businessId);
+
+    /*
+     * Resolve and verify the business context.
+     *
+     * CLIENT_USER:
+     *   The server verifies the requested business
+     *   belongs to the logged-in client.
+     *
+     * PLATFORM_ADMIN:
+     *   The server requires an explicit business ID
+     *   and verifies that the business exists.
+     */
+    const context =
+      await getAgentContext(
+        businessId
+      );
+
+    const supabase =
+      await createClient();
+
     const sessionId =
-      typeof body.sessionId ===
-      "string"
-        ? body.sessionId.trim()
-        : "";
+      getString(body.sessionId);
 
     if (!sessionId) {
       return NextResponse.json(
@@ -328,7 +412,7 @@ export async function POST(
 
     /*
      * Verify tenant ownership before
-     * touching any session/call data.
+     * touching session/call data.
      */
     const session =
       await getVoiceSession(
@@ -337,7 +421,10 @@ export async function POST(
       );
 
     /*
-     * First idempotency check.
+     * IDEMPOTENCY CHECK
+     *
+     * If a call already exists for this
+     * voice session, never create another.
      */
     const existingCall =
       await getExistingCall(
@@ -347,13 +434,6 @@ export async function POST(
       );
 
     if (existingCall) {
-      /*
-       * The call already exists, so the
-       * session should be completed as well.
-       *
-       * This also repairs a partially completed
-       * previous finalization safely.
-       */
       if (
         session.sessionStatus ===
         "ACTIVE"
@@ -370,11 +450,15 @@ export async function POST(
         success: true,
         alreadyFinalized: true,
         call: mapCallResponse(
-          existingCall
+          getRecord(existingCall)
         ),
       });
     }
 
+    /*
+     * A failed/stale session cannot be
+     * finalized as a successful call.
+     */
     if (
       session.sessionStatus !==
       "ACTIVE"
@@ -395,7 +479,8 @@ export async function POST(
       );
 
     /*
-     * Generate ONE final timestamp.
+     * Generate ONE authoritative
+     * completion timestamp.
      */
     const endedAt =
       new Date().toISOString();
@@ -407,9 +492,8 @@ export async function POST(
       );
 
     /*
-     * Generate notes before database
-     * finalization. Failure here is safe because
-     * generateCallNotes() returns null values.
+     * AI notes are best-effort.
+     * They cannot prevent call persistence.
      */
     const callNotes =
       await generateCallNotes(
@@ -417,37 +501,43 @@ export async function POST(
       );
 
     const state =
-      session.state;
+      getRecord(session.state);
 
     const customerId =
-      session.customerId ??
-      state.customerId ??
+      getString(
+        session.customerId
+      ) ??
+      getString(
+        state.customerId
+      ) ??
       null;
 
     const leadId =
-      session.leadId ??
-      state.leadId ??
+      getString(
+        session.leadId
+      ) ??
+      getString(
+        state.leadId
+      ) ??
       null;
 
     const appointmentId =
-      state.appointmentId ??
-      null;
+      getString(
+        state.appointmentId
+      ) ?? null;
 
     const callerPhone =
-      state.customerPhone ??
-      null;
+      getString(
+        state.customerPhone
+      ) ?? null;
 
     /*
      * IMPORTANT:
      *
-     * Save the call FIRST.
+     * SAVE CALL FIRST.
      *
-     * The voice session remains ACTIVE until
-     * the call has successfully been persisted.
-     *
-     * This prevents:
-     *
-     * COMPLETED session + missing call
+     * The session remains ACTIVE until
+     * the call has successfully persisted.
      */
     const {
       data: savedCall,
@@ -493,34 +583,28 @@ export async function POST(
         ended_at:
           endedAt,
       })
-      .select(
-        `
-          id,
-          customer_id,
-          caller_phone,
-          duration_seconds,
-          transcript,
-          summary,
-          outcome,
-          appointment_id,
-          lead_id,
-          started_at,
-          ended_at
-        `
-      )
+      .select(`
+        id,
+        customer_id,
+        caller_phone,
+        duration_seconds,
+        transcript,
+        summary,
+        outcome,
+        appointment_id,
+        lead_id,
+        started_at,
+        ended_at
+      `)
       .single();
 
+    /*
+     * Handle concurrent finalization.
+     */
     if (
       saveError ||
       !savedCall
     ) {
-      /*
-       * Another finalize request may have
-       * inserted the call concurrently.
-       *
-       * The unique partial index on
-       * voice_session_id makes this safe.
-       */
       if (
         saveError?.code ===
         "23505"
@@ -533,10 +617,6 @@ export async function POST(
           );
 
         if (duplicateCall) {
-          /*
-           * Make sure the session is completed
-           * after the existing call is confirmed.
-           */
           await completeVoiceSession(
             context.businessId,
             sessionId,
@@ -548,29 +628,34 @@ export async function POST(
             success: true,
             alreadyFinalized: true,
             call: mapCallResponse(
-              duplicateCall
+              getRecord(
+                duplicateCall
+              )
             ),
           });
         }
       }
 
       /*
-       * The call was NOT saved.
+       * Call was NOT persisted.
        *
-       * Therefore we deliberately do NOT
-       * mark the voice session COMPLETED.
+       * Do not mark the voice session
+       * as COMPLETED.
        */
+      console.error(
+        "Failed to persist completed call:",
+        saveError
+      );
+
       throw new Error(
-        saveError?.message ??
-          "Failed to save completed call."
+        "Failed to save completed call."
       );
     }
 
     /*
-     * The call now exists successfully.
+     * CALL EXISTS.
      *
-     * Only now mark the voice session
-     * COMPLETED using the exact same timestamp.
+     * Now complete the voice session.
      */
     let completedSession;
 
@@ -583,12 +668,11 @@ export async function POST(
         );
     } catch (completionError) {
       /*
-       * The call is already safely persisted.
+       * The call is already safely stored.
        *
-       * If session completion fails, do NOT
-       * create another call. A future finalize
-       * request will detect the existing call
-       * and safely repair the session state.
+       * A future finalize request can repair
+       * the session because it will detect
+       * the existing call.
        */
       console.error(
         "Voice session completion failed after call save:",
@@ -600,8 +684,9 @@ export async function POST(
         alreadyFinalized: false,
         sessionCompletionPending:
           true,
+
         call: mapCallResponse(
-          savedCall
+          getRecord(savedCall)
         ),
       });
     }
@@ -611,7 +696,7 @@ export async function POST(
       alreadyFinalized: false,
 
       call: mapCallResponse(
-        savedCall
+        getRecord(savedCall)
       ),
 
       session:
@@ -627,11 +712,10 @@ export async function POST(
       {
         success: false,
         error:
-          error instanceof Error
-            ? error.message
-            : "Failed to finalize voice session.",
+          "Failed to finalize voice session.",
       },
       { status: 500 }
     );
   }
 }
+

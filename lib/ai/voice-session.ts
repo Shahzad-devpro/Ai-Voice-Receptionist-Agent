@@ -99,11 +99,16 @@ export async function createVoiceSession(
     )
     .single();
 
-  if (error) {
-    throw new Error(
-      `Failed to create voice session: ${error.message}`
-    );
-  }
+ if (error) {
+  console.error(
+    "Failed to create voice session:",
+    error
+  );
+
+  throw new Error(
+    "Failed to create voice session."
+  );
+}
 
   return mapVoiceSession(data);
 }
@@ -251,13 +256,15 @@ const { data, error } = await supabase
     .single();
 
   if (error || !data) {
-    throw new Error(
-      `Failed to update voice session: ${
-        error?.message ??
-        "Unknown error."
-      }`
-    );
-  }
+  console.error(
+    "Failed to update voice session:",
+    error
+  );
+
+  throw new Error(
+    "Failed to update voice session."
+  );
+}
 
   return mapVoiceSession(data);
 }
@@ -323,13 +330,15 @@ const { data, error } = await supabase
     .single();
 
   if (error || !data) {
-    throw new Error(
-      `Failed to complete voice session: ${
-        error?.message ??
-        "Unknown error."
-      }`
-    );
-  }
+  console.error(
+    "Failed to complete voice session:",
+    error
+  );
+
+  throw new Error(
+    "Failed to complete voice session."
+  );
+}
 
   return mapVoiceSession(data);
 }
@@ -390,14 +399,16 @@ export async function failVoiceSession(
     )
     .single();
 
-  if (error || !data) {
-    throw new Error(
-      `Failed to fail voice session: ${
-        error?.message ??
-        "Unknown error."
-      }`
-    );
-  }
+ if (error || !data) {
+  console.error(
+    "Failed to fail voice session:",
+    error
+  );
+
+  throw new Error(
+    "Failed to fail voice session."
+  );
+}
 
   return mapVoiceSession(data);
 }

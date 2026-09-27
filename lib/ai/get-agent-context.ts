@@ -6,7 +6,9 @@ export type AgentContext = {
   businessId: string;
 };
 
-export async function getAgentContext(): Promise<AgentContext> {
+export async function getAgentContext(
+  requestedBusinessId?: string | null
+): Promise<AgentContext> {
   const supabase = await createClient();
 
   const {
@@ -36,6 +38,15 @@ export async function getAgentContext(): Promise<AgentContext> {
       );
     }
 
+    if (
+      requestedBusinessId &&
+      requestedBusinessId !== profile.business_id
+    ) {
+      throw new Error(
+        "You are not authorized to use this business context."
+      );
+    }
+
     return {
       userId: user.id,
       role: "CLIENT_USER",
@@ -43,7 +54,48 @@ export async function getAgentContext(): Promise<AgentContext> {
     };
   }
 
-  throw new Error(
-    "Platform admin requires an explicit business context."
-  );
+  if (profile.role === "PLATFORM_ADMIN") {
+    const businessId =
+      requestedBusinessId?.trim();
+
+    if (!businessId) {
+      throw new Error(
+        "Platform admin requires an explicit business context."
+      );
+    }
+
+    const {
+      data: business,
+      error: businessError,
+    } = await supabase
+      .from("businesses")
+      .select("id")
+      .eq("id", businessId)
+      .maybeSingle();
+
+    if (businessError) {
+      console.error(
+        "Failed to verify business context:",
+        businessError
+      );
+
+      throw new Error(
+        "Failed to verify business context."
+      );
+    }
+
+    if (!business) {
+      throw new Error(
+        "Selected business was not found."
+      );
+    }
+
+    return {
+      userId: user.id,
+      role: "PLATFORM_ADMIN",
+      businessId: business.id,
+    };
+  }
+
+  throw new Error("Unsupported user role.");
 }

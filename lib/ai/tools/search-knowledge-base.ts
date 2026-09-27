@@ -36,8 +36,15 @@ export async function searchKnowledgeBase(
     .limit(5);
 
   if (error) {
-    throw new Error(error.message);
-  }
+  console.error(
+    "Knowledge base search failed:",
+    error
+  );
+
+  throw new Error(
+    "Knowledge base search failed."
+  );
+}
 
   return {
     results: data ?? [],

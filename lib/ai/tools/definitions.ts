@@ -16,10 +16,8 @@ const getBusinessInformation: FunctionDeclaration = {
 
 const getServices: FunctionDeclaration = {
   name: "getServices",
-
   description:
     "REQUIRED TOOL: Retrieve the current active services offered by the business represented by this receptionist. ALWAYS call this tool when the customer asks what services are offered, what services are available, which services the business provides, or asks about a specific service. Do not answer service-list questions from the system prompt or memory. The returned database data is the authoritative source.",
-
   parameters: {
     type: Type.OBJECT,
     properties: {},
@@ -35,7 +33,8 @@ const searchKnowledgeBase: FunctionDeclaration = {
     properties: {
       query: {
         type: Type.STRING,
-        description: "The customer's question or keywords.",
+        description:
+          "The customer's question or keywords.",
       },
     },
     required: ["query"],
@@ -50,10 +49,10 @@ const findCustomer: FunctionDeclaration = {
     type: Type.OBJECT,
     properties: {
       phone: {
-  type: Type.STRING,
-  description:
-    "Customer phone number. Provide the complete phone number supplied by the caller.",
-},
+        type: Type.STRING,
+        description:
+          "Customer phone number. Provide the complete phone number supplied by the caller.",
+      },
     },
     required: ["phone"],
   },
@@ -62,28 +61,69 @@ const findCustomer: FunctionDeclaration = {
 const createCustomer: FunctionDeclaration = {
   name: "createCustomer",
   description:
-    "Create a new customer for the current business.",
+    "Create a new customer for the current business. For HVAC and CLEANING businesses, the customer's service address MUST be collected and provided before calling this tool. For DENTAL businesses, address is not required.",
   parameters: {
     type: Type.OBJECT,
     properties: {
       name: {
         type: Type.STRING,
-        description: "Customer full name.",
+        description:
+          "Customer full name.",
       },
       phone: {
         type: Type.STRING,
-        description: "Customer phone number.",
+        description:
+          "Customer phone number.",
       },
       email: {
         type: Type.STRING,
-        description: "Customer email address if provided.",
+        description:
+          "Customer email address if provided.",
       },
       address: {
         type: Type.STRING,
-        description: "Customer address if relevant.",
+        description:
+          "Customer service address. REQUIRED for HVAC and CLEANING businesses.",
       },
     },
     required: ["name", "phone"],
+  },
+};
+
+const updateCustomer: FunctionDeclaration = {
+  name: "updateCustomer",
+  description:
+    "Update an existing customer belonging to the current business. Use this when an existing customer is missing information needed for the requested operation. For HVAC and CLEANING businesses, use this tool to save the customer's service address before booking an appointment. Never update a customer belonging to another business.",
+  parameters: {
+    type: Type.OBJECT,
+    properties: {
+      customerId: {
+        type: Type.STRING,
+        description:
+          "ID of the current-business customer returned by findCustomer or createCustomer.",
+      },
+      name: {
+        type: Type.STRING,
+        description:
+          "Updated customer full name, if needed.",
+      },
+      phone: {
+        type: Type.STRING,
+        description:
+          "Updated customer phone number, if needed.",
+      },
+      email: {
+        type: Type.STRING,
+        description:
+          "Updated customer email address, if provided.",
+      },
+      address: {
+        type: Type.STRING,
+        description:
+          "Customer service address. REQUIRED for HVAC and CLEANING businesses before booking.",
+      },
+    },
+    required: ["customerId"],
   },
 };
 
@@ -96,18 +136,24 @@ const createLead: FunctionDeclaration = {
     properties: {
       customerId: {
         type: Type.STRING,
-        description: "ID of the current-business customer.",
+        description:
+          "ID of the current-business customer.",
       },
       serviceRequested: {
         type: Type.STRING,
-        description: "Requested service.",
+        description:
+          "Requested service.",
       },
       description: {
         type: Type.STRING,
-        description: "Description of the customer's request.",
+        description:
+          "Description of the customer's request.",
       },
     },
-    required: ["customerId", "serviceRequested"],
+    required: [
+      "customerId",
+      "serviceRequested",
+    ],
   },
 };
 
@@ -120,15 +166,18 @@ const checkAvailability: FunctionDeclaration = {
     properties: {
       serviceId: {
         type: Type.STRING,
-        description: "ID of the requested service.",
+        description:
+          "ID of the requested service.",
       },
       requestedDate: {
         type: Type.STRING,
-        description: "Date in YYYY-MM-DD format.",
+        description:
+          "Date in YYYY-MM-DD format.",
       },
       requestedTime: {
         type: Type.STRING,
-        description: "Time in HH:mm format using the business timezone.",
+        description:
+          "Time in HH:mm format using the business timezone.",
       },
     },
     required: [
@@ -142,17 +191,19 @@ const checkAvailability: FunctionDeclaration = {
 const bookAppointment: FunctionDeclaration = {
   name: "bookAppointment",
   description:
-    "Book an appointment after the customer selects a slot. The server performs a final availability check.",
+    "Book an appointment after the customer selects a slot. The server performs a final availability and customer-information check.",
   parameters: {
     type: Type.OBJECT,
     properties: {
       serviceId: {
         type: Type.STRING,
-        description: "ID of the requested service.",
+        description:
+          "ID of the requested service.",
       },
       customerId: {
         type: Type.STRING,
-        description: "ID of the current-business customer.",
+        description:
+          "ID of the current-business customer.",
       },
       startTime: {
         type: Type.STRING,
@@ -177,19 +228,23 @@ const saveCall: FunctionDeclaration = {
     properties: {
       callerPhone: {
         type: Type.STRING,
-        description: "Caller phone number.",
+        description:
+          "Caller phone number.",
       },
       customerId: {
         type: Type.STRING,
-        description: "ID of the current-business customer, if known.",
+        description:
+          "ID of the current-business customer, if known.",
       },
       transcript: {
         type: Type.STRING,
-        description: "Full conversation transcript.",
+        description:
+          "Full conversation transcript.",
       },
       summary: {
         type: Type.STRING,
-        description: "Concise summary of the call.",
+        description:
+          "Concise summary of the call.",
       },
       outcome: {
         type: Type.STRING,
@@ -208,7 +263,8 @@ const saveCall: FunctionDeclaration = {
       },
       durationSeconds: {
         type: Type.NUMBER,
-        description: "Call duration in seconds.",
+        description:
+          "Call duration in seconds.",
       },
       startedAt: {
         type: Type.STRING,
@@ -232,6 +288,7 @@ export const aiToolDefinitions: Tool[] = [
       searchKnowledgeBase,
       findCustomer,
       createCustomer,
+      updateCustomer,
       createLead,
       checkAvailability,
       bookAppointment,
@@ -239,3 +296,4 @@ export const aiToolDefinitions: Tool[] = [
     ],
   },
 ];
+

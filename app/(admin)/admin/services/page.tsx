@@ -25,9 +25,13 @@ export default async function ServicesPage() {
     `)
     .order("created_at", { ascending: false });
 
-  if (error) {
-    throw new Error(error.message);
-  }
+ if (error) {
+  console.error("Failed to load services:", error);
+
+  throw new Error(
+    "Failed to load services."
+  );
+}
 
   return (
     <div>

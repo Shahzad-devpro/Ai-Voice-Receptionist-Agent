@@ -15,8 +15,12 @@ export default async function BusinessesPage() {
     .order("created_at", { ascending: false });
 
   if (error) {
-    throw new Error(error.message);
-  }
+  console.error("Failed to load businesses:", error);
+
+  throw new Error(
+    "Failed to load businesses."
+  );
+}
 
   return (
     <div>

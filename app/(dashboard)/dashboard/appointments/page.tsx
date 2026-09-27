@@ -99,15 +99,18 @@ export default async function DashboardAppointmentsPage() {
           duration_minutes
         )
       `)
+      .eq("business_id", profile.business_id)
       .order("start_time", {
         ascending: true,
       });
 
   if (error) {
-    throw new Error(
-      `Failed to load appointments: ${error.message}`
-    );
-  }
+  console.error("Failed to load appointments:", error);
+
+  throw new Error(
+    "Failed to load appointments."
+  );
+}
 
   return (
     <div>

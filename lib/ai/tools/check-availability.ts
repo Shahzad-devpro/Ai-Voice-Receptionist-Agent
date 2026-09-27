@@ -145,9 +145,7 @@ export async function checkAvailability(
     };
   }
 
-  const requestedStartUtc = localStart.toUTC().toISO()!;
-  const requestedEndUtc = localEnd.toUTC().toISO()!;
-
+  
   const dayStart = localStart.startOf("day").toUTC().toISO()!;
   const dayEnd = localStart.endOf("day").toUTC().toISO()!;
 

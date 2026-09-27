@@ -57,11 +57,12 @@ export default async function CustomersPage() {
       });
 
   if (error) {
-    throw new Error(
-      `Failed to load customers: ${error.message}`
-    );
-  }
+  console.error("Failed to load customers:", error);
 
+  throw new Error(
+    "Failed to load customers."
+  );
+}
   return (
     <div>
       {/* Header */}

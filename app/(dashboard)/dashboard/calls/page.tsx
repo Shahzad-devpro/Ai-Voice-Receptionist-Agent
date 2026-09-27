@@ -1,4 +1,3 @@
-
 import Link from "next/link";
 
 import { getCurrentUser } from "@/lib/auth/get-current-user";
@@ -62,6 +61,7 @@ export default async function CallsPage() {
       caller_phone,
       duration_seconds,
       summary,
+      transcript,
       outcome,
       started_at,
       ended_at,
@@ -84,10 +84,12 @@ export default async function CallsPage() {
     .order("started_at", { ascending: false });
 
   if (error) {
-    throw new Error(
-      `Failed to load calls: ${error.message}`
-    );
-  }
+  console.error("Failed to load calls:", error);
+
+  throw new Error(
+    "Failed to load calls."
+  );
+}
 
   return (
     <div>
@@ -148,6 +150,10 @@ export default async function CallsPage() {
                   </th>
 
                   <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    Transcript
+                  </th>
+
+                  <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wide text-slate-500">
                     Action
                   </th>
                 </tr>
@@ -199,9 +205,22 @@ export default async function CallsPage() {
                       </td>
 
                       <td className="max-w-sm px-6 py-4">
-                        <p className="truncate text-sm text-slate-500">
+                        <p
+                          className="line-clamp-3 text-sm text-slate-500"
+                          title={call.summary ?? undefined}
+                        >
                           {call.summary ??
                             "No summary available"}
+                        </p>
+                      </td>
+
+                      <td className="max-w-md px-6 py-4">
+                        <p
+                          className="line-clamp-3 whitespace-pre-line text-sm text-slate-500"
+                          title={call.transcript ?? undefined}
+                        >
+                          {call.transcript ??
+                            "No transcript available"}
                         </p>
                       </td>
 
@@ -235,4 +254,3 @@ export default async function CallsPage() {
     </div>
   );
 }
-

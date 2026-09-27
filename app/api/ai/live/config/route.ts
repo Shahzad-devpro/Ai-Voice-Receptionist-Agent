@@ -4,13 +4,27 @@ import { getAgentContext } from "@/lib/ai/get-agent-context";
 import { getBusinessContext } from "@/lib/ai/get-business-context";
 import { buildSystemPrompt } from "@/lib/ai/build-system-prompt";
 
-export async function GET() {
-  try {
-    const context = await getAgentContext();
+export const runtime = "nodejs";
 
-    const business = await getBusinessContext(
-      context.businessId
-    );
+export async function GET(
+  request: Request
+) {
+  try {
+    const { searchParams } =
+      new URL(request.url);
+
+    const requestedBusinessId =
+      searchParams.get("businessId");
+
+    const context =
+      await getAgentContext(
+        requestedBusinessId
+      );
+
+    const business =
+      await getBusinessContext(
+        context.businessId
+      );
 
     const systemInstruction =
       buildSystemPrompt(business);
@@ -31,7 +45,7 @@ export async function GET() {
         error:
           error instanceof Error
             ? error.message
-            : "Failed to build Live AI configuration.",
+            : "Failed to load AI configuration.",
       },
       { status: 500 }
     );

@@ -22,10 +22,12 @@ export default async function KnowledgeBasePage() {
     .order("created_at", { ascending: false });
 
   if (error) {
-    throw new Error(
-      `Failed to load knowledge base: ${error.message}`
-    );
-  }
+  console.error("Failed to load knowledge base:", error);
+
+  throw new Error(
+    "Failed to load knowledge base."
+  );
+}
 
   return (
     <div>

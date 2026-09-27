@@ -1,4 +1,3 @@
-
 import { createClient } from "@/lib/supabase/server";
 import { DateTime } from "luxon";
 
@@ -40,14 +39,21 @@ function parseTime(
   minute: number;
 } | null {
   const match =
-    /^(\d{2}):(\d{2})$/.exec(value);
+    /^(\d{2}):(\d{2})$/.exec(
+      value
+    );
 
   if (!match) {
     return null;
   }
 
-  const hour = Number(match[1]);
-  const minute = Number(match[2]);
+  const hour = Number(
+    match[1]
+  );
+
+  const minute = Number(
+    match[2]
+  );
 
   if (
     !Number.isInteger(hour) ||
@@ -67,19 +73,20 @@ function parseTime(
 }
 
 function getBusinessDayHours(
-  businessHours: BusinessHours | null | undefined,
+  businessHours:
+    | BusinessHours
+    | null
+    | undefined,
   weekday: string
 ): BusinessHoursEntry | null {
   if (!businessHours) {
     return null;
   }
 
-  /*
-   * Support Monday / monday / MONDAY
-   * and similar key casing.
-   */
   const matchingKey =
-    Object.keys(businessHours).find(
+    Object.keys(
+      businessHours
+    ).find(
       (key) =>
         key.toLowerCase() ===
         weekday.toLowerCase()
@@ -90,7 +97,9 @@ function getBusinessDayHours(
   }
 
   const hours =
-    businessHours[matchingKey];
+    businessHours[
+      matchingKey
+    ];
 
   if (
     !hours ||
@@ -100,6 +109,47 @@ function getBusinessDayHours(
   }
 
   return hours;
+}
+
+function parseAppointmentStart(
+  value: string
+): DateTime {
+  const normalized =
+    value.trim();
+
+  /*
+   * bookAppointment receives the exact ISO
+   * timestamp returned by checkAvailability.
+   *
+   * We intentionally require ISO here instead of
+   * accepting free-form "2 PM" text. This prevents
+   * Gemini from changing the meaning of the selected slot
+   * between availability checking and booking.
+   */
+  const parsed =
+    DateTime.fromISO(
+      normalized,
+      {
+        setZone: true,
+      }
+    );
+
+  if (!parsed.isValid) {
+    throw new Error(
+      "Invalid appointment start time. The booking tool requires the exact ISO timestamp returned by checkAvailability."
+    );
+  }
+
+  if (
+    parsed.second !== 0 ||
+    parsed.millisecond !== 0
+  ) {
+    throw new Error(
+      "Appointments must start on a whole minute."
+    );
+  }
+
+  return parsed;
 }
 
 export async function bookAppointment(
@@ -148,16 +198,21 @@ export async function bookAppointment(
     await createClient();
 
   /*
-   * Verify customer belongs to
-   * the current business.
+   * Verify customer belongs to the current
+   * authorized business.
    */
   const {
     data: customer,
     error: customerError,
   } = await supabase
     .from("customers")
-    .select("id")
-    .eq("id", customerId)
+    .select(
+      "id, name, phone, address"
+    )
+    .eq(
+      "id",
+      customerId
+    )
     .eq(
       "business_id",
       context.businessId
@@ -165,8 +220,13 @@ export async function bookAppointment(
     .maybeSingle();
 
   if (customerError) {
+    console.error(
+      "Failed to verify appointment customer:",
+      customerError
+    );
+
     throw new Error(
-      customerError.message
+      "Failed to verify customer information."
     );
   }
 
@@ -176,9 +236,38 @@ export async function bookAppointment(
     );
   }
 
+  if (!customer.name?.trim()) {
+    throw new Error(
+      "Customer name is required before booking."
+    );
+  }
+
+  if (!customer.phone?.trim()) {
+    throw new Error(
+      "Customer phone number is required before booking."
+    );
+  }
+
   /*
-   * Verify service belongs to
-   * the current business.
+   * Industry-specific booking requirements.
+   */
+  const requiresAddress =
+    business.industry ===
+      "HVAC" ||
+    business.industry ===
+      "CLEANING";
+
+  if (
+    requiresAddress &&
+    !customer.address?.trim()
+  ) {
+    throw new Error(
+      "A service address is required before booking this appointment."
+    );
+  }
+
+  /*
+   * Verify service belongs to this business.
    */
   const {
     data: service,
@@ -193,7 +282,10 @@ export async function bookAppointment(
         is_active
       `
     )
-    .eq("id", serviceId)
+    .eq(
+      "id",
+      serviceId
+    )
     .eq(
       "business_id",
       context.businessId
@@ -201,8 +293,13 @@ export async function bookAppointment(
     .maybeSingle();
 
   if (serviceError) {
+    console.error(
+      "Failed to verify appointment service:",
+      serviceError
+    );
+
     throw new Error(
-      serviceError.message
+      "Failed to verify appointment service."
     );
   }
 
@@ -235,43 +332,32 @@ export async function bookAppointment(
   }
 
   /*
-   * Parse requested time.
-   *
-   * The input may contain an offset/timezone.
-   * We immediately convert it into the
-   * business timezone.
+   * Parse the exact timestamp returned by
+   * checkAvailability.
    */
-  let start =
-    DateTime.fromISO(
-      requestedStartTime,
-      {
-        setZone: true,
-      }
+  const suppliedStart =
+    parseAppointmentStart(
+      requestedStartTime
     );
 
-  if (!start.isValid) {
-    throw new Error(
-      "Invalid appointment start time."
-    );
-  }
-
-  start =
-    start.setZone(
+  /*
+   * Convert it into the business timezone.
+   *
+   * If Gemini supplies:
+   *
+   * 2026-09-29T14:00:00-04:00
+   *
+   * for an America/New_York business,
+   * the business-local time remains 2 PM.
+   */
+  const start =
+    suppliedStart.setZone(
       business.timezone
     );
 
   if (!start.isValid) {
     throw new Error(
       "Invalid business timezone."
-    );
-  }
-
-  if (
-    start.second !== 0 ||
-    start.millisecond !== 0
-  ) {
-    throw new Error(
-      "Appointments must start on a whole minute."
     );
   }
 
@@ -282,15 +368,56 @@ export async function bookAppointment(
     });
 
   /*
-   * Luxon weekday values:
+   * Diagnostic logging for appointment debugging.
    *
-   * Monday    = 1
-   * Tuesday   = 2
-   * Wednesday = 3
-   * Thursday  = 4
-   * Friday    = 5
-   * Saturday  = 6
-   * Sunday    = 7
+   * This makes it immediately visible whether
+   * Gemini supplied the wrong time or whether
+   * the database conversion is wrong.
+   */
+  console.log(
+    "Booking appointment:",
+    {
+      businessId:
+        context.businessId,
+
+      serviceId,
+
+      customerId,
+
+      suppliedStartTime:
+        requestedStartTime,
+
+      businessTimezone:
+        business.timezone,
+
+      businessLocalStart:
+        start.toISO(),
+
+      businessLocalEnd:
+        end.toISO(),
+
+      utcStart:
+        start.toUTC().toISO(),
+
+      utcEnd:
+        end.toUTC().toISO(),
+    }
+  );
+
+  /*
+   * Reject malformed timestamps.
+   */
+  if (
+    start.second !== 0 ||
+    start.millisecond !== 0
+  ) {
+    throw new Error(
+      "Appointments must start on a whole minute."
+    );
+  }
+
+  /*
+   * Determine business weekday.
    */
   const weekdayNames = [
     "Monday",
@@ -314,15 +441,11 @@ export async function bookAppointment(
   }
 
   const businessHours =
-    business.businessHours as unknown as
+    business.businessHours as
       | BusinessHours
       | null
       | undefined;
 
-  /*
-   * Find the business hours without
-   * assuming the database key casing.
-   */
   const hours =
     getBusinessDayHours(
       businessHours,
@@ -345,7 +468,10 @@ export async function bookAppointment(
   const closeTime =
     parseTime(hours.close);
 
-  if (!openTime || !closeTime) {
+  if (
+    !openTime ||
+    !closeTime
+  ) {
     throw new Error(
       `Business hours for ${weekday} are incorrectly configured.`
     );
@@ -372,8 +498,8 @@ export async function bookAppointment(
       });
 
   /*
-   * Make sure the complete appointment
-   * fits inside business hours.
+   * The entire appointment must fit inside
+   * business hours.
    */
   if (
     start < open ||
@@ -385,7 +511,7 @@ export async function bookAppointment(
   }
 
   /*
-   * Store appointment timestamps in UTC.
+   * Store database timestamps in UTC.
    */
   const startUtc =
     start.toUTC();
@@ -393,15 +519,29 @@ export async function bookAppointment(
   const endUtc =
     end.toUTC();
 
+  const startIso =
+    startUtc.toISO();
+
+  const endIso =
+    endUtc.toISO();
+
+  if (
+    !startIso ||
+    !endIso
+  ) {
+    throw new Error(
+      "Failed to convert appointment time to UTC."
+    );
+  }
+
   /*
    * Application-level conflict check.
-   *
-   * Only SCHEDULED appointments block
-   * the requested time.
    */
   const {
-    data: conflictingAppointment,
-    error: conflictError,
+    data:
+      conflictingAppointment,
+    error:
+      conflictError,
   } = await supabase
     .from("appointments")
     .select("id")
@@ -415,18 +555,23 @@ export async function bookAppointment(
     )
     .lt(
       "start_time",
-      endUtc.toISO()
+      endIso
     )
     .gt(
       "end_time",
-      startUtc.toISO()
+      startIso
     )
     .limit(1)
     .maybeSingle();
 
   if (conflictError) {
+    console.error(
+      "Failed to check appointment conflicts:",
+      conflictError
+    );
+
     throw new Error(
-      conflictError.message
+      "Failed to check appointment availability."
     );
   }
 
@@ -437,13 +582,14 @@ export async function bookAppointment(
   }
 
   /*
-   * Prevent the same customer from
-   * having duplicate appointments at
-   * exactly the same start time.
+   * Prevent duplicate appointment for the
+   * same customer at the exact same time.
    */
   const {
-    data: duplicateAppointment,
-    error: duplicateCheckError,
+    data:
+      duplicateAppointment,
+    error:
+      duplicateCheckError,
   } = await supabase
     .from("appointments")
     .select("id")
@@ -457,7 +603,7 @@ export async function bookAppointment(
     )
     .eq(
       "start_time",
-      startUtc.toISO()
+      startIso
     )
     .eq(
       "status",
@@ -467,23 +613,27 @@ export async function bookAppointment(
     .maybeSingle();
 
   if (duplicateCheckError) {
+    console.error(
+      "Failed to check duplicate appointment:",
+      duplicateCheckError
+    );
+
     throw new Error(
-      duplicateCheckError.message
+      "Failed to check existing appointments."
     );
   }
 
   if (duplicateAppointment) {
     throw new Error(
-      "This customer already has an appointment at the requested time."
+      "This customer already has an appointment scheduled for this time."
     );
   }
 
   /*
    * Final insert.
    *
-   * PostgreSQL exclusion constraint
-   * provides the final concurrency
-   * protection.
+   * PostgreSQL exclusion constraint remains the
+   * final concurrency protection.
    */
   const {
     data: appointment,
@@ -501,10 +651,10 @@ export async function bookAppointment(
         serviceId,
 
       start_time:
-        startUtc.toISO(),
+        startIso,
 
       end_time:
-        endUtc.toISO(),
+        endIso,
 
       status:
         "SCHEDULED",
@@ -522,16 +672,14 @@ export async function bookAppointment(
     )
     .single();
 
-  if (
-    insertError ||
-    !appointment
-  ) {
-    /*
-     * PostgreSQL exclusion constraint:
-     * 23P01 = exclusion_violation
-     */
+  if (insertError) {
+    console.error(
+      "Failed to book appointment:",
+      insertError
+    );
+
     if (
-      insertError?.code ===
+      insertError.code ===
       "23P01"
     ) {
       throw new Error(
@@ -540,10 +688,42 @@ export async function bookAppointment(
     }
 
     throw new Error(
-      insertError?.message ??
-        "Failed to book appointment."
+      "Failed to book appointment."
     );
   }
+
+  if (!appointment) {
+    console.error(
+      "Appointment insert returned no appointment."
+    );
+
+    throw new Error(
+      "Appointment was not created."
+    );
+  }
+
+  console.log(
+    "Appointment successfully booked:",
+    {
+      appointmentId:
+        appointment.id,
+
+      businessId:
+        appointment.business_id,
+
+      serviceId:
+        appointment.service_id,
+
+      customerId:
+        appointment.customer_id,
+
+      startTime:
+        appointment.start_time,
+
+      endTime:
+        appointment.end_time,
+    }
+  );
 
   return {
     appointment: {

@@ -9,13 +9,12 @@ import {
   updateVoiceSession,
 } from "@/lib/ai/voice-session";
 
+export const runtime = "nodejs";
+
 export async function POST(
   request: Request
 ) {
   try {
-    const context =
-      await getAgentContext();
-
     const body = await request
       .json()
       .catch(() => ({}));
@@ -26,10 +25,24 @@ export async function POST(
         : "create";
 
     /*
-     * CREATE
+     * Business context is required for
+     * platform-admin testing.
      *
-     * Creates the authoritative database
-     * voice session.
+     * CLIENT_USER requests are still restricted
+     * to their assigned business by getAgentContext().
+     */
+    const requestedBusinessId =
+      typeof body.businessId === "string"
+        ? body.businessId.trim()
+        : null;
+
+    const context =
+      await getAgentContext(
+        requestedBusinessId
+      );
+
+    /*
+     * CREATE
      */
     if (action === "create") {
       const session =
@@ -43,6 +56,9 @@ export async function POST(
       });
     }
 
+    /*
+     * All actions below require a session ID.
+     */
     const sessionId =
       typeof body.sessionId === "string"
         ? body.sessionId.trim()
@@ -61,9 +77,6 @@ export async function POST(
 
     /*
      * GET
-     *
-     * Retrieves a session only if it belongs
-     * to the authenticated user's business.
      */
     if (action === "get") {
       const session =
@@ -80,8 +93,6 @@ export async function POST(
 
     /*
      * UPDATE
-     *
-     * Stores the current conversation state.
      */
     if (action === "update") {
       const state =
@@ -103,7 +114,8 @@ export async function POST(
                 : undefined,
 
             leadId:
-              typeof body.leadId === "string"
+              typeof body.leadId ===
+              "string"
                 ? body.leadId.trim()
                 : undefined,
 
@@ -119,12 +131,6 @@ export async function POST(
 
     /*
      * FAIL
-     *
-     * Used when the voice session fails
-     * unexpectedly.
-     *
-     * Normal successful calls should NOT use
-     * this action.
      */
     if (action === "fail") {
       const session =
@@ -140,17 +146,8 @@ export async function POST(
     }
 
     /*
-     * COMPLETE is intentionally NOT handled here.
-     *
-     * Successful completion must go through:
-     *
-     * /api/ai/live/session/finalize
-     *
-     * because finalization also:
-     * - calculates duration
-     * - records started_at
-     * - records ended_at
-     * - creates the calls record
+     * Successful completion must go through
+     * the finalize endpoint.
      */
     if (action === "complete") {
       return NextResponse.json(
@@ -177,13 +174,15 @@ export async function POST(
       error
     );
 
+    const message =
+      error instanceof Error
+        ? error.message
+        : "Voice session operation failed.";
+
     return NextResponse.json(
       {
         success: false,
-        error:
-          error instanceof Error
-            ? error.message
-            : "Voice session operation failed.",
+        error: message,
       },
       { status: 500 }
     );

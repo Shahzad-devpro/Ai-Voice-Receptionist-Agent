@@ -111,7 +111,7 @@ export default function ClientUserPageClient({
 
           <p className="mt-1 text-sm text-slate-500">
             This account will only have access to this
-            business's client dashboard.
+            business&apos;s client dashboard.
           </p>
         </div>
 

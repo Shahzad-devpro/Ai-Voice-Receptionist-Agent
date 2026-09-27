@@ -2,15 +2,15 @@ import { NextResponse } from "next/server";
 
 import { createAdminClient } from "@/lib/supabase/admin";
 
+export const runtime = "nodejs";
+
 const STALE_AFTER_MINUTES = 30;
 
 function isAuthorizedCronRequest(
   request: Request
 ): boolean {
   const authorization =
-    request.headers.get(
-      "authorization"
-    );
+    request.headers.get("authorization");
 
   const cronSecret =
     process.env.CRON_SECRET;
@@ -25,45 +25,33 @@ function isAuthorizedCronRequest(
   );
 }
 
-async function cleanupStaleSessions() {
-  const supabase =
-    createAdminClient();
+async function cleanupStaleSessions(): Promise<number> {
+  const supabase = createAdminClient();
 
-  const cutoff =
-    new Date(
-      Date.now() -
-        STALE_AFTER_MINUTES *
-          60 *
-          1000
-    ).toISOString();
+  const cutoff = new Date(
+    Date.now() -
+      STALE_AFTER_MINUTES * 60 * 1000
+  ).toISOString();
 
-  /*
-   * Find every ACTIVE voice session
-   * that has been running for more than
-   * the allowed stale-session window.
-   */
   const {
     data: staleSessions,
     error: selectError,
   } = await supabase
     .from("voice_sessions")
-    .select(
-      "id, business_id"
-    )
-    .eq(
-      "session_status",
-      "ACTIVE"
-    )
-    .lt(
-      "started_at",
-      cutoff
-    );
+    .select("id")
+    .eq("session_status", "ACTIVE")
+    .lt("started_at", cutoff);
 
-  if (selectError) {
-    throw new Error(
-      selectError.message
-    );
-  }
+ if (selectError) {
+  console.error(
+    "Failed to find stale voice sessions:",
+    selectError
+  );
+
+  throw new Error(
+    "Failed to find stale voice sessions."
+  );
+}
 
   if (
     !staleSessions ||
@@ -72,21 +60,18 @@ async function cleanupStaleSessions() {
     return 0;
   }
 
-  const sessionIds =
-    staleSessions.map(
-      (session) => session.id
-    );
+  const sessionIds = staleSessions.map(
+    (session) => session.id
+  );
 
   const endedAt =
     new Date().toISOString();
 
   /*
-   * Only update sessions that are
-   * still ACTIVE.
-   *
-   * This prevents the cleanup job from
-   * overwriting a session that completed
-   * normally while this query was running.
+   * Only ACTIVE sessions are updated.
+   * A session that completed while the
+   * cleanup query was running will therefore
+   * not be overwritten.
    */
   const {
     data: updatedSessions,
@@ -94,26 +79,24 @@ async function cleanupStaleSessions() {
   } = await supabase
     .from("voice_sessions")
     .update({
-      session_status:
-        "FAILED",
+      session_status: "FAILED",
       ended_at: endedAt,
       updated_at: endedAt,
     })
-    .eq(
-      "session_status",
-      "ACTIVE"
-    )
-    .in(
-      "id",
-      sessionIds
-    )
+    .eq("session_status", "ACTIVE")
+    .in("id", sessionIds)
     .select("id");
 
-  if (updateError) {
-    throw new Error(
-      updateError.message
-    );
-  }
+ if (updateError) {
+  console.error(
+    "Failed to clean stale voice sessions:",
+    updateError
+  );
+
+  throw new Error(
+    "Failed to clean stale voice sessions."
+  );
+}
 
   return updatedSessions?.length ?? 0;
 }
@@ -121,22 +104,17 @@ async function cleanupStaleSessions() {
 export async function GET(
   request: Request
 ) {
-  try {
-    if (
-      !isAuthorizedCronRequest(
-        request
-      )
-    ) {
-      return NextResponse.json(
-        {
-          success: false,
-          error:
-            "Unauthorized.",
-        },
-        { status: 401 }
-      );
-    }
+  if (!isAuthorizedCronRequest(request)) {
+    return NextResponse.json(
+      {
+        success: false,
+        error: "Unauthorized.",
+      },
+      { status: 401 }
+    );
+  }
 
+  try {
     const cleaned =
       await cleanupStaleSessions();
 
@@ -146,7 +124,8 @@ export async function GET(
       staleAfterMinutes:
         STALE_AFTER_MINUTES,
     });
-  } catch (error) {
+  }  
+   catch (error) {
     console.error(
       "Voice session cleanup failed:",
       error
@@ -156,9 +135,7 @@ export async function GET(
       {
         success: false,
         error:
-          error instanceof Error
-            ? error.message
-            : "Voice session cleanup failed.",
+          "Voice session cleanup failed.",
       },
       { status: 500 }
     );

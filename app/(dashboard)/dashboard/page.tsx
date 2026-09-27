@@ -33,12 +33,15 @@ export default async function DashboardPage() {
     .single();
 
   if (profileError || !profile) {
-    throw new Error(
-      `Failed to load dashboard profile: ${
-        profileError?.message ?? "Profile not found."
-      }`
-    );
-  }
+  console.error(
+    "Failed to load dashboard profile:",
+    profileError
+  );
+
+  throw new Error(
+    "Failed to load dashboard profile."
+  );
+}
 
   if (!profile.business_id) {
     throw new Error(
@@ -98,10 +101,15 @@ export default async function DashboardPage() {
     callError;
 
   if (countError) {
-    throw new Error(
-      `Failed to load dashboard statistics: ${countError.message}`
-    );
-  }
+  console.error(
+    "Failed to load dashboard statistics:",
+    countError
+  );
+
+  throw new Error(
+    "Failed to load dashboard statistics."
+  );
+}
 
   return (
     <div>
@@ -116,7 +124,7 @@ export default async function DashboardPage() {
         </h1>
 
         <p className="mt-2 text-slate-600">
-          Manage your business's AI receptionist activity.
+          Manage your business&apos;s AI receptionist activity.
         </p>
       </div>
 

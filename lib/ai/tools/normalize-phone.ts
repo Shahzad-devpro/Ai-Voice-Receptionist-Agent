@@ -1,44 +1,141 @@
-export function normalizePhone(phone: string): string {
-  if (typeof phone !== "string") {
-    throw new Error("Phone number is required.");
+import {
+  parsePhoneNumberFromString,
+  type CountryCode,
+} from "libphonenumber-js";
+
+const COUNTRY_TO_REGION: Record<
+  string,
+  CountryCode
+> = {
+  US: "US",
+  GB: "GB",
+  UK: "GB",
+
+  // Common EU countries
+  AT: "AT",
+  BE: "BE",
+  BG: "BG",
+  HR: "HR",
+  CY: "CY",
+  CZ: "CZ",
+  DK: "DK",
+  EE: "EE",
+  FI: "FI",
+  FR: "FR",
+  DE: "DE",
+  GR: "GR",
+  HU: "HU",
+  IE: "IE",
+  IT: "IT",
+  LV: "LV",
+  LT: "LT",
+  LU: "LU",
+  MT: "MT",
+  NL: "NL",
+  PL: "PL",
+  PT: "PT",
+  RO: "RO",
+  SK: "SK",
+  SI: "SI",
+  ES: "ES",
+  SE: "SE",
+};
+
+function getDefaultRegion(
+  country?: string
+): CountryCode {
+  const normalizedCountry = country
+    ?.trim()
+    .toUpperCase();
+
+  if (!normalizedCountry) {
+    return "US";
   }
 
-  const trimmed = phone.trim();
+  return (
+    COUNTRY_TO_REGION[normalizedCountry] ??
+    "US"
+  );
+}
 
-  if (!trimmed) {
-    throw new Error("Phone number is required.");
-  }
+/**
+ * Converts common spoken/transcribed phone-number
+ * formats into something libphonenumber-js can parse.
+ *
+ * Examples:
+ * "555 123 4567"       -> "5551234567"
+ * "(555) 123-4567"     -> "5551234567"
+ * "555-123-4567"       -> "5551234567"
+ * "+1 555 123 4567"    -> "+15551234567"
+ *
+ * We intentionally keep "+" because it is meaningful
+ * for international numbers.
+ */
+function cleanPhoneInput(phone: string): string {
+  const normalized = phone
+    .trim()
+    .replace(/[^\d+]/g, "");
 
-  const digits = trimmed.replace(/\D/g, "");
-
-  if (!digits) {
+  if (!normalized) {
     throw new Error(
       "Phone number must contain digits."
     );
   }
 
-  // US 10-digit number:
-  // 2125559876 -> +12125559876
-  if (digits.length === 10) {
-    return `+1${digits}`;
-  }
-
-  // US number with country code:
-  // 12125559876 -> +12125559876
+  // A "+" is only valid at the beginning.
   if (
-    digits.length === 11 &&
-    digits.startsWith("1")
+    normalized.includes("+") &&
+    !normalized.startsWith("+")
   ) {
-    return `+${digits}`;
+    throw new Error(
+      "Invalid phone number."
+    );
   }
 
-  // Already supplied as an international number.
-  // Example: +442071234567
-  if (trimmed.startsWith("+")) {
-    return `+${digits}`;
+  return normalized;
+}
+
+export function normalizePhone(
+  phone: string,
+  country?: string
+): string {
+  if (typeof phone !== "string") {
+    throw new Error(
+      "Phone number is required."
+    );
   }
 
-  throw new Error(
-    "Invalid phone number. Please provide a 10-digit US number or include the country code."
-  );
+  const trimmed = phone.trim();
+
+  if (!trimmed) {
+    throw new Error(
+      "Phone number is required."
+    );
+  }
+
+  const defaultRegion =
+    getDefaultRegion(country);
+
+  const cleanedPhone =
+    cleanPhoneInput(trimmed);
+
+  const parsed =
+    parsePhoneNumberFromString(
+      cleanedPhone,
+      defaultRegion
+    );
+
+  if (!parsed) {
+    throw new Error(
+      "Invalid phone number."
+    );
+  }
+
+  if (!parsed.isValid()) {
+    throw new Error(
+      "Invalid phone number."
+    );
+  }
+
+  return parsed.number;
 }

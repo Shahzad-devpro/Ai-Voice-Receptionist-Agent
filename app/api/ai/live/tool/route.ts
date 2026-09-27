@@ -7,9 +7,14 @@ import {
 } from "@/lib/ai/voice-session";
 import { executeTool } from "@/lib/ai/tools/execute-tool";
 
+export const runtime = "nodejs";
+
 type ToolRequest = {
   name?: unknown;
   args?: unknown;
+  sessionId?: unknown;
+  businessId?: unknown;
+  toolCall?: unknown;
 };
 
 function normalizeArgs(
@@ -61,22 +66,58 @@ function getNestedRecord(
   return getRecord(record[key]);
 }
 
+function isExpectedToolError(
+  error: unknown
+): error is Error {
+  if (!(error instanceof Error)) {
+    return false;
+  }
+
+  const expectedMessages = [
+    "required",
+    "not found",
+    "not active",
+    "not currently available",
+    "not available",
+    "outside business hours",
+    "closed on",
+    "invalid",
+    "already exists",
+    "already has",
+    "no longer available",
+    "does not belong",
+    "incorrectly configured",
+    "cannot be",
+  ];
+
+  const message =
+    error.message.toLowerCase();
+
+  return expectedMessages.some(
+    (keyword) =>
+      message.includes(keyword)
+  );
+}
+
 export async function POST(
   request: Request
 ) {
   try {
-    const context =
-      await getAgentContext();
-
     const body =
-      await request
+      (await request
         .json()
-        .catch(() => ({}));
+        .catch(() => ({}))) as ToolRequest;
+
+    const businessId =
+      getString(body.businessId);
+
+    const context =
+      await getAgentContext(
+        businessId
+      );
 
     const sessionId =
-      typeof body.sessionId === "string"
-        ? body.sessionId.trim()
-        : "";
+      getString(body.sessionId);
 
     if (!sessionId) {
       return NextResponse.json(
@@ -137,13 +178,6 @@ export async function POST(
       );
     }
 
-    /*
-     * saveCall is intentionally handled by
-     * the finalization endpoint.
-     *
-     * This prevents the Live model from creating
-     * a second call record.
-     */
     if (toolName === "saveCall") {
       return NextResponse.json({
         success: true,
@@ -158,19 +192,44 @@ export async function POST(
     const args =
       normalizeArgs(toolCall.args);
 
-    /*
-     * Execute the requested tool using the
-     * authenticated business context.
-     */
-    const result =
-      await executeTool(
-        {
-          businessId:
-            context.businessId,
-        },
-        toolName,
-        args
-      );
+    let result: unknown;
+
+    try {
+      result =
+        await executeTool(
+          {
+            businessId:
+              context.businessId,
+          },
+          toolName,
+          args
+        );
+    } catch (error) {
+      if (isExpectedToolError(error)) {
+        console.warn(
+          "Live AI tool validation response:",
+          {
+            toolName,
+            businessId:
+              context.businessId,
+            sessionId,
+            error:
+              error.message,
+          }
+        );
+
+        return NextResponse.json({
+          success: true,
+          result: {
+            success: false,
+            error: error.message,
+            requiresCustomerAction: true,
+          },
+        });
+      }
+
+      throw error;
+    }
 
     const returnedCustomer =
       getNestedRecord(
@@ -191,11 +250,14 @@ export async function POST(
       );
 
     /*
-     * CUSTOMER
+     * Keep the voice session synchronized
+     * whenever a customer is found, created,
+     * or updated.
      */
     if (
       toolName === "findCustomer" ||
-      toolName === "createCustomer"
+      toolName === "createCustomer" ||
+      toolName === "updateCustomer"
     ) {
       const customerId =
         getString(
@@ -212,20 +274,47 @@ export async function POST(
           returnedCustomer?.phone
         );
 
+      const customerEmail =
+        getString(
+          returnedCustomer?.email
+        );
+
+      const customerAddress =
+        getString(
+          returnedCustomer?.address
+        );
+
       if (customerId) {
         await updateVoiceSession(
           context.businessId,
           sessionId,
           {
             customerId,
-
             state: {
               customerId,
+
               ...(customerName
-                ? { customerName }
+                ? {
+                    customerName,
+                  }
                 : {}),
+
               ...(customerPhone
-                ? { customerPhone }
+                ? {
+                    customerPhone,
+                  }
+                : {}),
+
+              ...(customerEmail
+                ? {
+                    customerEmail,
+                  }
+                : {}),
+
+              ...(customerAddress
+                ? {
+                    customerAddress,
+                  }
                 : {}),
             },
           }
@@ -233,9 +322,6 @@ export async function POST(
       }
     }
 
-    /*
-     * LEAD
-     */
     if (
       toolName === "createLead"
     ) {
@@ -250,7 +336,6 @@ export async function POST(
           sessionId,
           {
             leadId,
-
             state: {
               leadId,
             },
@@ -259,41 +344,25 @@ export async function POST(
       }
     }
 
-    /*
-     * APPOINTMENT
-     *
-     * bookAppointment() returns:
-     *
-     * {
-     *   appointment: {
-     *     id,
-     *     businessId,
-     *     customerId,
-     *     serviceId,
-     *     startTime,
-     *     endTime,
-     *     status
-     *   }
-     * }
-     *
-     * Therefore we must use camelCase here.
-     */
     if (
       toolName === "bookAppointment"
     ) {
       const appointmentId =
         getString(
-          returnedAppointment?.id
+          returnedAppointment
+            ?.id
         );
 
       const serviceId =
         getString(
-          returnedAppointment?.serviceId
+          returnedAppointment
+            ?.serviceId
         );
 
       const startTime =
         getString(
-          returnedAppointment?.startTime
+          returnedAppointment
+            ?.startTime
         );
 
       if (!appointmentId) {
@@ -302,14 +371,6 @@ export async function POST(
         );
       }
 
-      /*
-       * Persist the appointment ID into the
-       * persistent voice session state.
-       *
-       * updateVoiceSession() merges this state
-       * with all previously stored state, so
-       * customerId / leadId are preserved.
-       */
       await updateVoiceSession(
         context.businessId,
         sessionId,
@@ -348,9 +409,7 @@ export async function POST(
       {
         success: false,
         error:
-          error instanceof Error
-            ? error.message
-            : "Tool execution failed.",
+          "The requested operation could not be completed.",
       },
       { status: 500 }
     );

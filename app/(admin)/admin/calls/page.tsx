@@ -14,6 +14,7 @@ export default async function CallsPage() {
       caller_phone,
       duration_seconds,
       summary,
+      transcript,
       outcome,
       started_at,
       created_at,
@@ -27,11 +28,13 @@ export default async function CallsPage() {
     `)
     .order("created_at", { ascending: false });
 
-  if (error) {
-    throw new Error(
-      `Failed to load calls: ${error.message}`
-    );
-  }
+ if (error) {
+  console.error("Failed to load calls:", error);
+
+  throw new Error(
+    "Failed to load calls."
+  );
+}
 
   return (
     <div>
@@ -41,8 +44,8 @@ export default async function CallsPage() {
         </h1>
 
         <p className="mt-2 text-slate-600">
-          Review AI receptionist calls, summaries, outcomes,
-          and caller information.
+          Review AI receptionist calls, summaries,
+          transcripts, outcomes, and caller information.
         </p>
       </div>
 
@@ -61,6 +64,14 @@ export default async function CallsPage() {
 
                 <th className="px-6 py-4 text-sm font-semibold text-slate-700">
                   Duration
+                </th>
+
+                <th className="px-6 py-4 text-sm font-semibold text-slate-700">
+                  Summary
+                </th>
+
+                <th className="px-6 py-4 text-sm font-semibold text-slate-700">
+                  Transcript
                 </th>
 
                 <th className="px-6 py-4 text-sm font-semibold text-slate-700">
@@ -89,21 +100,24 @@ export default async function CallsPage() {
                 const seconds = duration % 60;
 
                 return (
-                  <tr key={call.id}>
+                  <tr
+                    key={call.id}
+                    className="transition hover:bg-slate-50"
+                  >
                     <td className="px-6 py-4">
-  <Link
-    href={`/admin/calls/${call.id}`}
-    className="font-semibold text-slate-900 hover:text-slate-600"
-  >
-    {customer?.name ?? "Unknown caller"}
-  </Link>
+                      <Link
+                        href={`/admin/calls/${call.id}`}
+                        className="font-semibold text-slate-900 hover:text-slate-600"
+                      >
+                        {customer?.name ?? "Unknown caller"}
+                      </Link>
 
-  <p className="mt-1 text-sm text-slate-500">
-    {customer?.phone ??
-      call.caller_phone ??
-      "No phone"}
-  </p>
-</td>
+                      <p className="mt-1 text-sm text-slate-500">
+                        {customer?.phone ??
+                          call.caller_phone ??
+                          "No phone"}
+                      </p>
+                    </td>
 
                     <td className="px-6 py-4 text-sm text-slate-600">
                       {business?.name ?? "Unknown business"}
@@ -111,6 +125,26 @@ export default async function CallsPage() {
 
                     <td className="px-6 py-4 text-sm text-slate-600">
                       {minutes}m {seconds}s
+                    </td>
+
+                    <td className="max-w-xs px-6 py-4">
+                      <p
+                        className="line-clamp-2 text-sm text-slate-600"
+                        title={call.summary ?? undefined}
+                      >
+                        {call.summary ??
+                          "No summary available"}
+                      </p>
+                    </td>
+
+                    <td className="max-w-md px-6 py-4">
+                      <p
+                        className="line-clamp-3 whitespace-pre-line text-sm text-slate-500"
+                        title={call.transcript ?? undefined}
+                      >
+                        {call.transcript ??
+                          "No transcript available"}
+                      </p>
                     </td>
 
                     <td className="px-6 py-4">
@@ -131,7 +165,7 @@ export default async function CallsPage() {
               {!calls?.length && (
                 <tr>
                   <td
-                    colSpan={5}
+                    colSpan={7}
                     className="px-6 py-12 text-center text-sm text-slate-500"
                   >
                     No calls have been recorded yet.

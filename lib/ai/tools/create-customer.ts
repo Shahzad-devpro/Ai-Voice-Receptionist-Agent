@@ -21,6 +21,11 @@ export type CreateCustomerResult = {
   };
 };
 
+type BusinessIndustry =
+  | "HVAC"
+  | "CLEANING"
+  | "DENTAL";
+
 export async function createCustomer(
   context: ToolContext,
   input: CreateCustomerInput
@@ -31,7 +36,7 @@ export async function createCustomer(
     );
   }
 
-  const name = input.name.trim();
+  const name = input.name?.trim();
 
   if (!name) {
     throw new Error(
@@ -39,7 +44,13 @@ export async function createCustomer(
     );
   }
 
-  const phone = normalizePhone(input.phone);
+  const phoneInput = input.phone?.trim();
+
+  if (!phoneInput) {
+    throw new Error(
+      "Customer phone number is required."
+    );
+  }
 
   const email =
     input.email?.trim() || null;
@@ -49,10 +60,65 @@ export async function createCustomer(
 
   const supabase = await createClient();
 
-  const { data, error } = await supabase
+  const {
+    data: business,
+    error: businessError,
+  } = await supabase
+    .from("businesses")
+    .select("country, industry")
+    .eq("id", context.businessId)
+    .single();
+
+  if (businessError || !business) {
+    console.error(
+      "Failed to load business information:",
+      businessError
+    );
+
+    throw new Error(
+      "Failed to load business information."
+    );
+  }
+
+  const industry =
+    business.industry as BusinessIndustry;
+
+  if (
+    industry !== "HVAC" &&
+    industry !== "CLEANING" &&
+    industry !== "DENTAL"
+  ) {
+    throw new Error(
+      "Business industry is incorrectly configured."
+    );
+  }
+
+  const requiresAddress =
+    industry === "HVAC" ||
+    industry === "CLEANING";
+
+  if (
+    requiresAddress &&
+    !address
+  ) {
+    throw new Error(
+      "A service address is required for this business. Collect the customer's service address before creating the customer."
+    );
+  }
+
+  const phone = normalizePhone(
+    phoneInput,
+    business.country
+  );
+
+  const {
+    data,
+    error,
+  } = await supabase
     .from("customers")
     .insert({
-      business_id: context.businessId,
+      business_id:
+        context.businessId,
       name,
       phone,
       email,
@@ -70,7 +136,14 @@ export async function createCustomer(
       );
     }
 
-    throw new Error(error.message);
+    console.error(
+      "Failed to create customer:",
+      error
+    );
+
+    throw new Error(
+      "Failed to create customer."
+    );
   }
 
   return {

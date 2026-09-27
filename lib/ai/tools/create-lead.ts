@@ -49,9 +49,16 @@ export async function createLead(
       .eq("business_id", context.businessId)
       .maybeSingle();
 
-  if (customerError) {
-    throw new Error(customerError.message);
-  }
+ if (customerError) {
+  console.error(
+    "Failed to verify lead customer:",
+    customerError
+  );
+
+  throw new Error(
+    "Failed to verify customer."
+  );
+}
 
   if (!customer) {
     throw new Error(
@@ -74,8 +81,15 @@ export async function createLead(
     .single();
 
   if (error) {
-    throw new Error(error.message);
-  }
+  console.error(
+    "Failed to create lead:",
+    error
+  );
+
+  throw new Error(
+    "Failed to create lead."
+  );
+}
 
   return {
     lead: {

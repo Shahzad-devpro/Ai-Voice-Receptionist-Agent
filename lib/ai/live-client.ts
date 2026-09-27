@@ -7,6 +7,7 @@ import { GEMINI_LIVE_MODEL } from "@/lib/ai/config";
 
 export async function createLiveSession(
   systemInstruction: string,
+  businessId: string,
   onOpen?: () => void,
   onMessage?: (message: unknown) => void,
   onError?: (error: Error) => void,
@@ -17,6 +18,12 @@ export async function createLiveSession(
       "/api/ai/live/token",
       {
         method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          businessId,
+        }),
       }
     );
 
@@ -44,9 +51,9 @@ export async function createLiveSession(
       model: GEMINI_LIVE_MODEL,
 
       config: {
-  responseModalities: [Modality.AUDIO],
-  inputAudioTranscription: {},
-  outputAudioTranscription: {},
+        responseModalities: [Modality.AUDIO],
+        inputAudioTranscription: {},
+        outputAudioTranscription: {},
         systemInstruction,
       },
 

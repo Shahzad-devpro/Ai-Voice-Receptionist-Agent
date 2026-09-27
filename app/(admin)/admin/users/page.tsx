@@ -22,9 +22,13 @@ export default async function UsersPage() {
     `)
     .order("created_at", { ascending: false });
 
-  if (error) {
-    throw new Error(error.message);
-  }
+ if (error) {
+  console.error("Failed to load users:", error);
+
+  throw new Error(
+    "Failed to load users."
+  );
+}
 
   return (
     <div>
