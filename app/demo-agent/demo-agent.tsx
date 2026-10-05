@@ -1,11 +1,16 @@
 "use client";
 
-import { useRef, useState } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 
 import { createDemoLiveSession } from "@/lib/ai/demo-live-client";
 import { startMicrophone } from "@/lib/ai/audio/microphone";
 import { startAudioCapture } from "@/lib/ai/audio/capture";
 import { createAudioPlayback } from "@/lib/ai/audio/playback";
+import Link from "next/link";
 
 type Industry =
   | "HVAC"
@@ -124,11 +129,32 @@ export default function DemoAgent() {
   const transcriptRef =
     useRef<TranscriptEntry[]>([]);
 
+  const transcriptContainerRef =
+    useRef<HTMLDivElement | null>(null);
+
   const audioFrameCountRef =
     useRef(0);
 
   const intentionalCloseRef =
     useRef(false);
+
+  /*
+   * UX ONLY:
+   * Keep the latest transcript message visible.
+   */
+  useEffect(() => {
+    const container =
+      transcriptContainerRef.current;
+
+    if (!container) {
+      return;
+    }
+
+    container.scrollTo({
+      top: container.scrollHeight,
+      behavior: "smooth",
+    });
+  }, [transcript]);
 
   function appendTranscript(
     speaker: TranscriptSpeaker,
@@ -509,80 +535,112 @@ export default function DemoAgent() {
     )!;
 
   return (
-    <main className="min-h-screen bg-[#08090c] px-4 py-6 text-white sm:px-6 lg:px-8">
-      <div className="mx-auto max-w-7xl">
+    <main className="min-h-screen bg-slate-50 text-slate-950">
+      {/* Premium ambient background */}
+      <div className="pointer-events-none fixed inset-0 -z-10 overflow-hidden">
+        <div className="absolute -left-40 -top-40 h-96 w-96 rounded-full bg-violet-200/40 blur-3xl" />
+        <div className="absolute right-0 top-20 h-96 w-96 rounded-full bg-blue-200/30 blur-3xl" />
+        <div className="absolute bottom-0 left-1/3 h-80 w-80 rounded-full bg-indigo-100/50 blur-3xl" />
+      </div>
 
-        <header className="mb-8">
-          <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+      <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8 lg:py-10">
+
+        {/* Header */}
+        <header className="mb-8 lg:mb-10">
+          <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
 
             <div>
-              <div className="mb-4 flex items-center gap-3">
+              <div className="mb-5 flex items-center gap-3">
 
-                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-white text-sm font-black text-black shadow-lg shadow-white/10">
+                <div className="relative flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-br from-violet-600 to-indigo-600 text-sm font-black text-white shadow-lg shadow-violet-500/20">
                   AI
                 </div>
 
                 <div>
-                  <p className="text-sm font-semibold text-white">
+                  <p className="text-sm font-bold tracking-tight text-slate-900">
                     Voice Receptionist
                   </p>
 
                   <p className="text-xs text-slate-500">
-                    Interactive AI demo
+                    Interactive AI demonstration
                   </p>
                 </div>
 
               </div>
 
-              <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">
-                Experience the AI receptionist
+              <div className="inline-flex items-center gap-2 rounded-full border border-violet-200 bg-violet-50 px-3 py-1.5 text-[11px] font-semibold text-violet-700">
+                <span className="h-1.5 w-1.5 rounded-full bg-violet-500" />
+                LIVE AI EXPERIENCE
+              </div>
+
+              <h1 className="mt-4 max-w-3xl text-3xl font-bold tracking-tight text-slate-950 sm:text-4xl lg:text-5xl">
+                Experience your next AI receptionist.
               </h1>
 
-              <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-400">
-                Choose an industry and have a
-                real-time conversation with an AI
-                receptionist. No account required.
+              <p className="mt-4 max-w-2xl text-sm leading-7 text-slate-600 sm:text-base">
+                Choose an industry and have a real-time
+                conversation with an AI receptionist.
+                No account required.
               </p>
             </div>
 
             <div
-              className={`inline-flex w-fit items-center gap-2 rounded-full border px-3 py-2 text-xs font-medium ${
+              className={`inline-flex w-fit items-center gap-2 rounded-full border px-4 py-2.5 text-xs font-semibold shadow-sm ${
                 isSessionActive
-                  ? "border-emerald-400/20 bg-emerald-400/10 text-emerald-300"
-                  : "border-white/10 bg-white/[0.04] text-slate-400"
+                  ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                  : isStarting
+                    ? "border-amber-200 bg-amber-50 text-amber-700"
+                    : "border-slate-200 bg-white text-slate-500"
               }`}
             >
               <span
                 className={`h-2 w-2 rounded-full ${
                   isSessionActive
-                    ? "animate-pulse bg-emerald-400"
-                    : "bg-slate-500"
+                    ? "animate-pulse bg-emerald-500"
+                    : isStarting
+                      ? "animate-pulse bg-amber-500"
+                      : "bg-slate-400"
                 }`}
               />
 
               {isSessionActive
                 ? "Live"
-                : "Ready"}
+                : isStarting
+                  ? "Connecting"
+                  : "Ready"}
             </div>
 
           </div>
         </header>
 
+        {/* Main layout */}
         <div className="grid gap-6 lg:grid-cols-[minmax(0,1.55fr)_minmax(300px,0.7fr)]">
 
-          <section className="overflow-hidden rounded-3xl border border-white/10 bg-white/[0.035] shadow-2xl shadow-black/30 backdrop-blur">
+          {/* Main card */}
+          <section className="overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-[0_24px_80px_-30px_rgba(15,23,42,0.25)]">
 
-            <div className="border-b border-white/10 p-5 sm:p-6">
+            {/* Industry selector */}
+            <div className="border-b border-slate-100 p-5 sm:p-7">
 
-              <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">
-                Choose an industry
-              </p>
+              <div className="flex items-start justify-between gap-4">
 
-              <h2 className="mt-1 text-lg font-semibold">
-                Which receptionist would you like to test?
-              </h2>
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-violet-500">
+                    Choose an industry
+                  </p>
 
-              <div className="mt-4 grid gap-3 md:grid-cols-3">
+                  <h2 className="mt-1.5 text-lg font-bold tracking-tight text-slate-900">
+                    Which receptionist would you like to test?
+                  </h2>
+                </div>
+
+                <div className="hidden rounded-xl bg-slate-50 px-3 py-2 text-[10px] font-semibold text-slate-400 sm:block">
+                  3 DEMOS
+                </div>
+
+              </div>
+
+              <div className="mt-5 grid gap-3 md:grid-cols-3">
 
                 {INDUSTRIES.map(
                   (option) => {
@@ -603,26 +661,26 @@ export default function DemoAgent() {
                             option.id
                           )
                         }
-                        className={`rounded-2xl border p-4 text-left transition ${
+                        className={`group rounded-2xl border p-4 text-left transition-all duration-200 ${
                           selected
-                            ? "border-white/30 bg-white text-slate-950 shadow-xl shadow-white/5"
-                            : "border-white/10 bg-black/20 text-slate-300 hover:border-white/20 hover:bg-white/[0.06]"
+                            ? "border-violet-200 bg-gradient-to-br from-violet-50 to-indigo-50 shadow-md shadow-violet-500/10"
+                            : "border-slate-200 bg-white hover:-translate-y-0.5 hover:border-violet-200 hover:bg-slate-50 hover:shadow-md"
                         } disabled:cursor-not-allowed disabled:opacity-50`}
                       >
                         <div className="flex items-center justify-between">
 
                           <span
-                            className={`text-sm font-semibold ${
+                            className={`text-sm font-bold ${
                               selected
-                                ? "text-slate-950"
-                                : "text-white"
+                                ? "text-violet-700"
+                                : "text-slate-800"
                             }`}
                           >
                             {option.name}
                           </span>
 
                           {selected && (
-                            <span className="flex h-5 w-5 items-center justify-center rounded-full bg-slate-950 text-[10px] text-white">
+                            <span className="flex h-6 w-6 items-center justify-center rounded-full bg-gradient-to-br from-violet-600 to-indigo-600 text-[10px] font-bold text-white shadow-sm">
                               ✓
                             </span>
                           )}
@@ -632,7 +690,7 @@ export default function DemoAgent() {
                         <p
                           className={`mt-2 text-xs leading-5 ${
                             selected
-                              ? "text-slate-600"
+                              ? "text-violet-700/70"
                               : "text-slate-500"
                           }`}
                         >
@@ -647,22 +705,32 @@ export default function DemoAgent() {
               </div>
             </div>
 
-            <div className="min-h-[430px] bg-black/20 p-5 sm:p-6">
+            {/* Conversation */}
+            <div className="bg-slate-50/70 p-5 sm:p-7">
 
               <div className="mb-5 flex items-center justify-between">
 
                 <div>
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-600">
-                    Live conversation
-                  </p>
+                  <div className="flex items-center gap-2">
+                    <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-violet-500">
+                      Live conversation
+                    </p>
 
-                  <h2 className="mt-1 text-lg font-semibold">
+                    {isSessionActive && (
+                      <span className="flex items-center gap-1.5 text-[10px] font-semibold text-emerald-600">
+                        <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500" />
+                        Listening
+                      </span>
+                    )}
+                  </div>
+
+                  <h2 className="mt-1.5 text-lg font-bold tracking-tight text-slate-900">
                     {selectedIndustry.name} receptionist
                   </h2>
                 </div>
 
                 {transcript.length > 0 && (
-                  <span className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-[11px] text-slate-400">
+                  <span className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-[10px] font-semibold text-slate-500 shadow-sm">
                     {transcript.length} entries
                   </span>
                 )}
@@ -670,18 +738,18 @@ export default function DemoAgent() {
               </div>
 
               {transcript.length === 0 ? (
-                <div className="flex min-h-[320px] items-center justify-center rounded-2xl border border-dashed border-white/10 bg-white/[0.02] px-6 text-center">
+                <div className="flex min-h-[330px] items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-white px-6 text-center shadow-sm">
 
                   <div className="max-w-md">
 
-                    <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04]">
+                    <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-2xl border border-violet-100 bg-gradient-to-br from-violet-50 to-indigo-50 shadow-sm">
 
                       <svg
                         viewBox="0 0 24 24"
                         fill="none"
                         stroke="currentColor"
                         strokeWidth="1.5"
-                        className="h-7 w-7 text-slate-500"
+                        className="h-7 w-7 text-violet-500"
                       >
                         <path
                           strokeLinecap="round"
@@ -698,7 +766,7 @@ export default function DemoAgent() {
 
                     </div>
 
-                    <p className="text-sm font-medium text-slate-300">
+                    <p className="text-sm font-bold text-slate-800">
                       Ready when you are
                     </p>
 
@@ -712,7 +780,10 @@ export default function DemoAgent() {
 
                 </div>
               ) : (
-                <div className="max-h-[460px] space-y-3 overflow-y-auto pr-1">
+                <div
+                  ref={transcriptContainerRef}
+                  className="max-h-[460px] space-y-4 overflow-y-auto rounded-2xl border border-slate-200 bg-white p-4 shadow-inner shadow-slate-100 sm:p-5"
+                >
 
                   {transcript.map(
                     (
@@ -733,17 +804,37 @@ export default function DemoAgent() {
                           }`}
                         >
                           <div
-                            className={`max-w-[90%] rounded-2xl px-4 py-3 sm:max-w-[75%] ${
+                            className={`max-w-[92%] rounded-2xl px-4 py-3 shadow-sm sm:max-w-[78%] ${
                               isCustomer
-                                ? "rounded-br-md bg-white text-slate-950"
-                                : "rounded-bl-md bg-white/[0.07] text-slate-200"
+                                ? "rounded-br-md bg-gradient-to-br from-violet-600 to-indigo-600 text-white shadow-violet-500/10"
+                                : "rounded-bl-md border border-slate-200 bg-slate-50 text-slate-700"
                             }`}
                           >
-                            <p className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-slate-500">
-                              {entry.speaker}
-                            </p>
+                            <div className="mb-1.5 flex items-center gap-2">
 
-                            <p className="whitespace-pre-wrap text-sm leading-6">
+                              <span
+                                className={`text-[10px] font-bold uppercase tracking-wider ${
+                                  isCustomer
+                                    ? "text-violet-100"
+                                    : "text-violet-500"
+                                }`}
+                              >
+                                {entry.speaker}
+                              </span>
+
+                              {!isCustomer && (
+                                <span className="h-1 w-1 rounded-full bg-violet-300" />
+                              )}
+
+                            </div>
+
+                            <p
+                              className={`whitespace-pre-wrap text-sm leading-6 ${
+                                isCustomer
+                                  ? "text-white"
+                                  : "text-slate-700"
+                              }`}
+                            >
                               {entry.text}
                             </p>
                           </div>
@@ -757,7 +848,8 @@ export default function DemoAgent() {
 
             </div>
 
-            <div className="border-t border-white/10 bg-white/[0.02] p-5 sm:p-6">
+            {/* Controls */}
+            <div className="border-t border-slate-100 bg-white p-5 sm:p-7">
 
               <div className="flex flex-col gap-3 sm:flex-row">
 
@@ -770,16 +862,16 @@ export default function DemoAgent() {
                     isSessionActive ||
                     isStarting
                   }
-                  className="flex flex-1 items-center justify-center gap-2 rounded-2xl bg-white px-5 py-4 text-sm font-semibold text-slate-950 shadow-xl shadow-white/5 transition hover:bg-slate-200 disabled:cursor-not-allowed disabled:opacity-40"
+                  className="group flex flex-1 items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-violet-600 to-indigo-600 px-5 py-4 text-sm font-bold text-white shadow-lg shadow-violet-500/20 transition-all duration-200 hover:-translate-y-0.5 hover:from-violet-700 hover:to-indigo-700 hover:shadow-xl hover:shadow-violet-500/25 disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   {isStarting ? (
                     <>
-                      <span className="h-4 w-4 animate-spin rounded-full border-2 border-slate-400 border-t-slate-950" />
+                      <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" />
                       Connecting...
                     </>
                   ) : (
                     <>
-                      <span className="flex h-6 w-6 items-center justify-center rounded-full bg-slate-950 text-white">
+                      <span className="flex h-6 w-6 items-center justify-center rounded-full bg-white/15">
                         <svg
                           viewBox="0 0 24 24"
                           fill="currentColor"
@@ -800,39 +892,49 @@ export default function DemoAgent() {
                   disabled={
                     !isSessionActive
                   }
-                  className="flex flex-1 items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/[0.06] px-5 py-4 text-sm font-semibold text-white transition hover:bg-white/[0.1] disabled:cursor-not-allowed disabled:opacity-40"
+                  className="flex flex-1 items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm font-bold text-slate-700 shadow-sm transition-all duration-200 hover:border-red-200 hover:bg-red-50 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-40"
                 >
-                  <span className="h-2.5 w-2.5 rounded-full bg-red-400" />
+                  <span className="h-2.5 w-2.5 rounded-full bg-red-500" />
 
                   Stop Demo
                 </button>
 
               </div>
 
-              <div className="mt-4 rounded-2xl border border-white/10 bg-black/20 px-4 py-3">
+              <div className="mt-4 flex items-center justify-between rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
 
                 <div className="flex items-start gap-3">
 
                   <span
                     className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${
                       isSessionActive
-                        ? "animate-pulse bg-emerald-400"
+                        ? "animate-pulse bg-emerald-500"
                         : isStarting
-                          ? "animate-pulse bg-amber-400"
-                          : "bg-slate-500"
+                          ? "animate-pulse bg-amber-500"
+                          : "bg-slate-400"
                     }`}
                   />
 
                   <div>
-                    <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-600">
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
                       Status
                     </p>
 
-                    <p className="mt-1 text-sm text-slate-300">
+                    <p className="mt-1 text-sm font-medium text-slate-700">
                       {status}
                     </p>
                   </div>
 
+                </div>
+
+                <div className="hidden text-right sm:block">
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                    Audio
+                  </p>
+
+                  <p className="mt-1 text-xs font-semibold text-slate-600">
+                    {audioFrameCount.toLocaleString()}
+                  </p>
                 </div>
 
               </div>
@@ -841,15 +943,25 @@ export default function DemoAgent() {
 
           </section>
 
+          {/* Sidebar */}
           <aside className="space-y-5">
 
-            <section className="rounded-3xl border border-white/10 bg-white/[0.035] p-5">
+            {/* Selected demo */}
+            <section className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-[0_16px_50px_-25px_rgba(15,23,42,0.2)]">
 
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-600">
-                Selected demo
-              </p>
+              <div className="flex items-center justify-between">
 
-              <h2 className="mt-2 text-xl font-semibold">
+                <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-violet-500">
+                  Selected demo
+                </p>
+
+                <span className="rounded-full bg-violet-50 px-2.5 py-1 text-[9px] font-bold text-violet-600">
+                  LIVE AI
+                </span>
+
+              </div>
+
+              <h2 className="mt-3 text-xl font-bold tracking-tight text-slate-900">
                 {selectedIndustry.name}
               </h2>
 
@@ -857,41 +969,64 @@ export default function DemoAgent() {
                 {selectedIndustry.description}
               </p>
 
-              <div className="mt-5 border-t border-white/10 pt-5">
+              <div className="mt-5 grid grid-cols-2 gap-3 border-t border-slate-100 pt-5">
 
-                <p className="text-[11px] uppercase tracking-wider text-slate-600">
-                  Live audio
-                </p>
+                <div className="rounded-2xl bg-slate-50 p-3">
+                  <p className="text-[9px] font-bold uppercase tracking-wider text-slate-400">
+                    Audio
+                  </p>
 
-                <p className="mt-1 text-sm text-slate-300">
-                  {audioFrameCount.toLocaleString()}
-                </p>
+                  <p className="mt-1 text-sm font-bold text-slate-800">
+                    {audioFrameCount.toLocaleString()}
+                  </p>
 
-                <p className="mt-1 text-xs text-slate-600">
-                  Audio frames streamed
-                </p>
+                  <p className="mt-0.5 text-[10px] text-slate-400">
+                    frames streamed
+                  </p>
+                </div>
+
+                <div className="rounded-2xl bg-slate-50 p-3">
+                  <p className="text-[9px] font-bold uppercase tracking-wider text-slate-400">
+                    Session
+                  </p>
+
+                  <p className="mt-1 text-sm font-bold text-slate-800">
+                    {isSessionActive
+                      ? "Active"
+                      : "Ready"}
+                  </p>
+
+                  <p className="mt-0.5 text-[10px] text-slate-400">
+                    live status
+                  </p>
+                </div>
 
               </div>
 
             </section>
 
-            <section className="rounded-3xl border border-white/10 bg-white/[0.035] p-5">
+            {/* Try saying */}
+            <section className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-[0_16px_50px_-25px_rgba(15,23,42,0.2)]">
 
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-600">
+              <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-violet-500">
                 Try saying
               </p>
 
-              <div className="mt-4 space-y-2">
+              <h3 className="mt-1 text-base font-bold text-slate-900">
+                Start a natural conversation
+              </h3>
 
-                <div className="rounded-xl border border-white/10 bg-black/20 p-3 text-sm text-slate-300">
+              <div className="mt-4 space-y-2.5">
+
+                <div className="rounded-2xl border border-slate-100 bg-slate-50 p-3.5 text-sm font-medium text-slate-600 transition hover:border-violet-100 hover:bg-violet-50/50">
                   &quot;What services do you offer?&quot;
                 </div>
 
-                <div className="rounded-xl border border-white/10 bg-black/20 p-3 text-sm text-slate-300">
+                <div className="rounded-2xl border border-slate-100 bg-slate-50 p-3.5 text-sm font-medium text-slate-600 transition hover:border-violet-100 hover:bg-violet-50/50">
                   &quot;What are your business hours?&quot;
                 </div>
 
-                <div className="rounded-xl border border-white/10 bg-black/20 p-3 text-sm text-slate-300">
+                <div className="rounded-2xl border border-slate-100 bg-slate-50 p-3.5 text-sm font-medium text-slate-600 transition hover:border-violet-100 hover:bg-violet-50/50">
                   &quot;Can I book an appointment?&quot;
                 </div>
 
@@ -899,18 +1034,79 @@ export default function DemoAgent() {
 
             </section>
 
-            <section className="rounded-3xl border border-white/10 bg-gradient-to-br from-white/[0.06] to-white/[0.015] p-5">
+            {/* Contact CTA */}
+            <section className="relative overflow-hidden rounded-[28px] bg-gradient-to-br from-violet-600 via-indigo-600 to-blue-600 p-5 text-white shadow-xl shadow-indigo-500/20">
 
-              <div className="flex items-start gap-3">
+              <div className="absolute -right-12 -top-12 h-32 w-32 rounded-full bg-white/10 blur-2xl" />
 
-                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-white/[0.05]">
+              <div className="relative">
+
+                <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-white/15 backdrop-blur">
+                  <svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.7"
+                    className="h-5 w-5"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5Z"
+                    />
+                  </svg>
+                </div>
+
+                <p className="mt-4 text-[10px] font-bold uppercase tracking-[0.18em] text-violet-100">
+                  Want this for your business?
+                </p>
+
+                <h2 className="mt-2 text-xl font-bold tracking-tight">
+                  Turn every call into an opportunity.
+                </h2>
+
+                <p className="mt-2 text-sm leading-6 text-violet-100">
+                  Talk to us about building an AI receptionist
+                  tailored to your business.
+                </p>
+
+                <Link
+                  href="/#contact"
+                  className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-white px-4 py-3 text-sm font-bold text-indigo-700 shadow-lg transition hover:-translate-y-0.5 hover:bg-slate-50"
+                >
+                  Contact Us
 
                   <svg
                     viewBox="0 0 24 24"
                     fill="none"
                     stroke="currentColor"
+                    strokeWidth="2"
+                    className="h-4 w-4"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M5 12h14M13 6l6 6-6 6"
+                    />
+                  </svg>
+                </Link>
+
+              </div>
+
+            </section>
+
+            {/* Demo notice */}
+            <section className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm">
+
+              <div className="flex items-start gap-3">
+
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-amber-100 bg-amber-50">
+                  <svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
                     strokeWidth="1.5"
-                    className="h-4 w-4 text-slate-300"
+                    className="h-4 w-4 text-amber-600"
                   >
                     <path
                       strokeLinecap="round"
@@ -918,22 +1114,18 @@ export default function DemoAgent() {
                       d="M12 9v4m0 4h.01M10.29 3.86 2.82 17a2 2 0 0 0 1.74 3h14.88a2 2 0 0 0 1.74-3L13.71 3.86a2 2 0 0 0-3.42 0Z"
                     />
                   </svg>
-
                 </div>
 
                 <div>
-
-                  <p className="text-sm font-medium text-slate-200">
+                  <p className="text-sm font-bold text-slate-800">
                     Public demonstration
                   </p>
 
                   <p className="mt-1 text-xs leading-5 text-slate-500">
-                    This demo uses static business
-                    knowledge. Customers, leads,
-                    appointments and calls are not
-                    created or modified.
+                    This demo uses static business knowledge.
+                    Customers, leads, appointments and calls
+                    are not created or modified.
                   </p>
-
                 </div>
 
               </div>
@@ -943,8 +1135,44 @@ export default function DemoAgent() {
           </aside>
 
         </div>
+
+        {/* Bottom contact strip */}
+        <div className="mt-8 flex flex-col items-center justify-between gap-4 rounded-3xl border border-slate-200 bg-white px-5 py-4 shadow-sm sm:flex-row sm:px-6">
+
+          <div>
+            <p className="text-sm font-bold text-slate-800">
+              Ready to put an AI receptionist on your business line?
+            </p>
+
+            <p className="mt-1 text-xs text-slate-500">
+              Let&apos;s build a system around your business workflow.
+            </p>
+          </div>
+
+          <Link
+            href="/#contact"
+            className="inline-flex shrink-0 items-center gap-2 rounded-xl border border-violet-200 bg-violet-50 px-4 py-2.5 text-xs font-bold text-violet-700 transition hover:bg-violet-100"
+          >
+            Contact Us
+
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              className="h-3.5 w-3.5"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M5 12h14M13 6l6 6-6 6"
+              />
+            </svg>
+          </Link>
+
+        </div>
+
       </div>
     </main>
   );
 }
-
