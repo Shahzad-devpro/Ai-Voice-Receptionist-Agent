@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <defs>
+    <linearGradient id="aiGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#2563eb" />
+      <stop offset="100%" stop-color="#8b5cf6" />
+    </linearGradient>
+  </defs>
+
+  <!-- Speech bubble background -->
+  <path d="M 10 16 C 10 10 14 6 20 6 L 44 6 C 50 6 54 10 54 16 L 54 38 C 54 44 50 48 44 48 L 32 48 L 20 58 L 22 48 L 20 48 C 14 48 10 44 10 38 Z" fill="url(#aiGrad)" />
+  
+  <!-- Sound wave bars -->
+  <rect x="22" y="24" width="3" height="12" rx="1.5" fill="#ffffff" />
+  <rect x="27" y="19" width="3" height="22" rx="1.5" fill="#ffffff" />
+  <rect x="32" y="15" width="3" height="30" rx="1.5" fill="#ffffff" />
+  <rect x="37" y="21" width="3" height="18" rx="1.5" fill="#ffffff" />
+  <rect x="42" y="25" width="3" height="10" rx="1.5" fill="#ffffff" />
+
+  <!-- AI Sparkle indicator -->
+  <path d="M 45 10 Q 47 14 51 16 Q 47 18 45 22 Q 43 18 39 16 Q 43 14 45 10 Z" fill="#fbbf24" />
+</svg>

@@ -17,7 +17,7 @@ export default async function AdminPage() {
         </p>
       </div>
 
-      <div className="mt-8 grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+      <div className="mt-8 grid gap-6 md:grid-cols-2 lg:grid-cols-5">
         <Link
           href="/admin/businesses"
           className="rounded-xl border bg-white p-6 transition hover:shadow-md"
@@ -67,6 +67,18 @@ export default async function AdminPage() {
 
           <p className="mt-2 text-sm text-gray-500">
             Manage business-specific AI knowledge.
+          </p>
+        </Link>
+        <Link
+          href="/admin/contact-requests"
+          className="rounded-xl border bg-white p-6 transition hover:shadow-md"
+        >
+          <h2 className="font-semibold">
+            Contact Requests
+          </h2>
+
+          <p className="mt-2 text-sm text-gray-500">
+            Manage Contact Requests From Users.
           </p>
         </Link>
       </div>

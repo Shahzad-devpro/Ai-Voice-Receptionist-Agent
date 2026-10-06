@@ -139,8 +139,8 @@ export default function DemoAgent() {
     useRef(false);
 
   /*
-   * UX ONLY:
-   * Keep the latest transcript message visible.
+   * Auto-scroll transcript to the
+   * newest conversation entry.
    */
   useEffect(() => {
     const container =
@@ -536,78 +536,100 @@ export default function DemoAgent() {
 
   return (
     <main className="min-h-screen bg-slate-50 text-slate-950">
-      {/* Premium ambient background */}
-      <div className="pointer-events-none fixed inset-0 -z-10 overflow-hidden">
-        <div className="absolute -left-40 -top-40 h-96 w-96 rounded-full bg-violet-200/40 blur-3xl" />
-        <div className="absolute right-0 top-20 h-96 w-96 rounded-full bg-blue-200/30 blur-3xl" />
-        <div className="absolute bottom-0 left-1/3 h-80 w-80 rounded-full bg-indigo-100/50 blur-3xl" />
+      {/* Premium background accents */}
+      <div className="pointer-events-none fixed inset-0 overflow-hidden">
+        <div className="absolute -left-40 -top-40 h-[500px] w-[500px] rounded-full bg-blue-200/30 blur-3xl" />
+
+        <div className="absolute right-[-180px] top-[20%] h-[500px] w-[500px] rounded-full bg-indigo-200/25 blur-3xl" />
+
+        <div className="absolute bottom-[-250px] left-[30%] h-[500px] w-[500px] rounded-full bg-cyan-200/20 blur-3xl" />
       </div>
 
-      <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8 lg:py-10">
+      <div className="relative mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-8 lg:px-8 lg:py-10">
 
         {/* Header */}
-        <header className="mb-8 lg:mb-10">
+        <header className="mb-8">
           <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
 
             <div>
               <div className="mb-5 flex items-center gap-3">
 
-                <div className="relative flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-br from-violet-600 to-indigo-600 text-sm font-black text-white shadow-lg shadow-violet-500/20">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-950 text-sm font-black text-white shadow-lg shadow-slate-900/10">
                   AI
                 </div>
 
                 <div>
-                  <p className="text-sm font-bold tracking-tight text-slate-900">
+                  <p className="text-sm font-bold text-slate-950">
                     Voice Receptionist
                   </p>
 
                   <p className="text-xs text-slate-500">
-                    Interactive AI demonstration
+                    Interactive AI demo
                   </p>
                 </div>
 
               </div>
 
-              <div className="inline-flex items-center gap-2 rounded-full border border-violet-200 bg-violet-50 px-3 py-1.5 text-[11px] font-semibold text-violet-700">
-                <span className="h-1.5 w-1.5 rounded-full bg-violet-500" />
-                LIVE AI EXPERIENCE
+              <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-[11px] font-semibold text-slate-600 shadow-sm">
+                <span className="h-1.5 w-1.5 rounded-full bg-blue-500" />
+
+                LIVE AI DEMONSTRATION
               </div>
 
-              <h1 className="mt-4 max-w-3xl text-3xl font-bold tracking-tight text-slate-950 sm:text-4xl lg:text-5xl">
-                Experience your next AI receptionist.
+              <h1 className="max-w-3xl text-3xl font-bold tracking-tight text-slate-950 sm:text-4xl lg:text-5xl">
+                Experience your AI receptionist in action.
               </h1>
 
               <p className="mt-4 max-w-2xl text-sm leading-7 text-slate-600 sm:text-base">
                 Choose an industry and have a real-time
-                conversation with an AI receptionist.
+                voice conversation with an AI receptionist.
                 No account required.
               </p>
             </div>
 
-            <div
-              className={`inline-flex w-fit items-center gap-2 rounded-full border px-4 py-2.5 text-xs font-semibold shadow-sm ${
-                isSessionActive
-                  ? "border-emerald-200 bg-emerald-50 text-emerald-700"
-                  : isStarting
-                    ? "border-amber-200 bg-amber-50 text-amber-700"
-                    : "border-slate-200 bg-white text-slate-500"
-              }`}
-            >
-              <span
-                className={`h-2 w-2 rounded-full ${
-                  isSessionActive
-                    ? "animate-pulse bg-emerald-500"
-                    : isStarting
-                      ? "animate-pulse bg-amber-500"
-                      : "bg-slate-400"
-                }`}
-              />
+            <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center lg:flex-col lg:items-end">
 
-              {isSessionActive
-                ? "Live"
-                : isStarting
-                  ? "Connecting"
+              <Link
+                href="/contact"
+                className="group inline-flex items-center gap-2 rounded-full bg-slate-950 px-5 py-2.5 text-xs font-semibold text-white shadow-lg shadow-slate-900/10 transition hover:-translate-y-0.5 hover:bg-slate-800"
+              >
+                Contact Us
+
+                <svg
+                  viewBox="0 0 20 20"
+                  fill="none"
+                  className="h-4 w-4 transition-transform group-hover:translate-x-0.5"
+                >
+                  <path
+                    d="M4 10h11M11 5l5 5-5 5"
+                    stroke="currentColor"
+                    strokeWidth="1.6"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+              </Link>
+
+              <div
+                className={`inline-flex items-center gap-2 rounded-full border px-4 py-2 text-xs font-semibold shadow-sm ${
+                  isSessionActive
+                    ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                    : "border-slate-200 bg-white text-slate-500"
+                }`}
+              >
+                <span
+                  className={`h-2 w-2 rounded-full ${
+                    isSessionActive
+                      ? "animate-pulse bg-emerald-500"
+                      : "bg-slate-400"
+                  }`}
+                />
+
+                {isSessionActive
+                  ? "Live"
                   : "Ready"}
+              </div>
+
             </div>
 
           </div>
@@ -617,27 +639,19 @@ export default function DemoAgent() {
         <div className="grid gap-6 lg:grid-cols-[minmax(0,1.55fr)_minmax(300px,0.7fr)]">
 
           {/* Main card */}
-          <section className="overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-[0_24px_80px_-30px_rgba(15,23,42,0.25)]">
+          <section className="overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-xl shadow-slate-900/[0.06]">
 
             {/* Industry selector */}
             <div className="border-b border-slate-100 p-5 sm:p-7">
 
-              <div className="flex items-start justify-between gap-4">
+              <div className="flex flex-col gap-1">
+                <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400">
+                  Choose an industry
+                </p>
 
-                <div>
-                  <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-violet-500">
-                    Choose an industry
-                  </p>
-
-                  <h2 className="mt-1.5 text-lg font-bold tracking-tight text-slate-900">
-                    Which receptionist would you like to test?
-                  </h2>
-                </div>
-
-                <div className="hidden rounded-xl bg-slate-50 px-3 py-2 text-[10px] font-semibold text-slate-400 sm:block">
-                  3 DEMOS
-                </div>
-
+                <h2 className="text-lg font-bold text-slate-950">
+                  Select your receptionist
+                </h2>
               </div>
 
               <div className="mt-5 grid gap-3 md:grid-cols-3">
@@ -663,8 +677,8 @@ export default function DemoAgent() {
                         }
                         className={`group rounded-2xl border p-4 text-left transition-all duration-200 ${
                           selected
-                            ? "border-violet-200 bg-gradient-to-br from-violet-50 to-indigo-50 shadow-md shadow-violet-500/10"
-                            : "border-slate-200 bg-white hover:-translate-y-0.5 hover:border-violet-200 hover:bg-slate-50 hover:shadow-md"
+                            ? "border-slate-950 bg-slate-950 text-white shadow-lg shadow-slate-900/10"
+                            : "border-slate-200 bg-slate-50 text-slate-700 hover:-translate-y-0.5 hover:border-slate-300 hover:bg-white hover:shadow-md"
                         } disabled:cursor-not-allowed disabled:opacity-50`}
                       >
                         <div className="flex items-center justify-between">
@@ -672,15 +686,15 @@ export default function DemoAgent() {
                           <span
                             className={`text-sm font-bold ${
                               selected
-                                ? "text-violet-700"
-                                : "text-slate-800"
+                                ? "text-white"
+                                : "text-slate-950"
                             }`}
                           >
                             {option.name}
                           </span>
 
                           {selected && (
-                            <span className="flex h-6 w-6 items-center justify-center rounded-full bg-gradient-to-br from-violet-600 to-indigo-600 text-[10px] font-bold text-white shadow-sm">
+                            <span className="flex h-5 w-5 items-center justify-center rounded-full bg-white text-[10px] font-bold text-slate-950">
                               ✓
                             </span>
                           )}
@@ -690,13 +704,12 @@ export default function DemoAgent() {
                         <p
                           className={`mt-2 text-xs leading-5 ${
                             selected
-                              ? "text-violet-700/70"
+                              ? "text-slate-300"
                               : "text-slate-500"
                           }`}
                         >
                           {option.description}
                         </p>
-
                       </button>
                     );
                   }
@@ -708,29 +721,20 @@ export default function DemoAgent() {
             {/* Conversation */}
             <div className="bg-slate-50/70 p-5 sm:p-7">
 
-              <div className="mb-5 flex items-center justify-between">
+              <div className="mb-5 flex items-center justify-between gap-4">
 
                 <div>
-                  <div className="flex items-center gap-2">
-                    <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-violet-500">
-                      Live conversation
-                    </p>
+                  <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-400">
+                    Live conversation
+                  </p>
 
-                    {isSessionActive && (
-                      <span className="flex items-center gap-1.5 text-[10px] font-semibold text-emerald-600">
-                        <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500" />
-                        Listening
-                      </span>
-                    )}
-                  </div>
-
-                  <h2 className="mt-1.5 text-lg font-bold tracking-tight text-slate-900">
+                  <h2 className="mt-1 text-lg font-bold text-slate-950">
                     {selectedIndustry.name} receptionist
                   </h2>
                 </div>
 
                 {transcript.length > 0 && (
-                  <span className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-[10px] font-semibold text-slate-500 shadow-sm">
+                  <span className="shrink-0 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-[10px] font-semibold text-slate-500 shadow-sm">
                     {transcript.length} entries
                   </span>
                 )}
@@ -738,18 +742,18 @@ export default function DemoAgent() {
               </div>
 
               {transcript.length === 0 ? (
-                <div className="flex min-h-[330px] items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-white px-6 text-center shadow-sm">
+                <div className="flex min-h-[360px] items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-white px-6 text-center shadow-sm">
 
                   <div className="max-w-md">
 
-                    <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-2xl border border-violet-100 bg-gradient-to-br from-violet-50 to-indigo-50 shadow-sm">
+                    <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-2xl border border-slate-200 bg-slate-50 shadow-sm">
 
                       <svg
                         viewBox="0 0 24 24"
                         fill="none"
                         stroke="currentColor"
                         strokeWidth="1.5"
-                        className="h-7 w-7 text-violet-500"
+                        className="h-7 w-7 text-slate-400"
                       >
                         <path
                           strokeLinecap="round"
@@ -770,7 +774,7 @@ export default function DemoAgent() {
                       Ready when you are
                     </p>
 
-                    <p className="mt-2 text-xs leading-5 text-slate-500">
+                    <p className="mt-2 text-xs leading-6 text-slate-500">
                       Choose an industry, start the
                       receptionist, allow microphone
                       access, and speak naturally.
@@ -781,8 +785,10 @@ export default function DemoAgent() {
                 </div>
               ) : (
                 <div
-                  ref={transcriptContainerRef}
-                  className="max-h-[460px] space-y-4 overflow-y-auto rounded-2xl border border-slate-200 bg-white p-4 shadow-inner shadow-slate-100 sm:p-5"
+                  ref={
+                    transcriptContainerRef
+                  }
+                  className="max-h-[460px] min-h-[360px] space-y-3 overflow-y-auto rounded-2xl border border-slate-200 bg-white p-4 shadow-sm scroll-smooth sm:p-5"
                 >
 
                   {transcript.map(
@@ -804,37 +810,23 @@ export default function DemoAgent() {
                           }`}
                         >
                           <div
-                            className={`max-w-[92%] rounded-2xl px-4 py-3 shadow-sm sm:max-w-[78%] ${
+                            className={`max-w-[90%] rounded-2xl px-4 py-3 shadow-sm sm:max-w-[75%] ${
                               isCustomer
-                                ? "rounded-br-md bg-gradient-to-br from-violet-600 to-indigo-600 text-white shadow-violet-500/10"
-                                : "rounded-bl-md border border-slate-200 bg-slate-50 text-slate-700"
+                                ? "rounded-br-md bg-slate-950 text-white"
+                                : "rounded-bl-md border border-slate-200 bg-slate-50 text-slate-800"
                             }`}
                           >
-                            <div className="mb-1.5 flex items-center gap-2">
-
-                              <span
-                                className={`text-[10px] font-bold uppercase tracking-wider ${
-                                  isCustomer
-                                    ? "text-violet-100"
-                                    : "text-violet-500"
-                                }`}
-                              >
-                                {entry.speaker}
-                              </span>
-
-                              {!isCustomer && (
-                                <span className="h-1 w-1 rounded-full bg-violet-300" />
-                              )}
-
-                            </div>
-
                             <p
-                              className={`whitespace-pre-wrap text-sm leading-6 ${
+                              className={`mb-1 text-[9px] font-bold uppercase tracking-wider ${
                                 isCustomer
-                                  ? "text-white"
-                                  : "text-slate-700"
+                                  ? "text-slate-400"
+                                  : "text-slate-400"
                               }`}
                             >
+                              {entry.speaker}
+                            </p>
+
+                            <p className="whitespace-pre-wrap text-sm leading-6">
                               {entry.text}
                             </p>
                           </div>
@@ -862,20 +854,21 @@ export default function DemoAgent() {
                     isSessionActive ||
                     isStarting
                   }
-                  className="group flex flex-1 items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-violet-600 to-indigo-600 px-5 py-4 text-sm font-bold text-white shadow-lg shadow-violet-500/20 transition-all duration-200 hover:-translate-y-0.5 hover:from-violet-700 hover:to-indigo-700 hover:shadow-xl hover:shadow-violet-500/25 disabled:cursor-not-allowed disabled:opacity-40"
+                  className="group flex flex-1 items-center justify-center gap-3 rounded-2xl bg-slate-950 px-5 py-4 text-sm font-bold text-white shadow-lg shadow-slate-900/10 transition-all hover:-translate-y-0.5 hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   {isStarting ? (
                     <>
-                      <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" />
+                      <span className="h-4 w-4 animate-spin rounded-full border-2 border-slate-500 border-t-white" />
+
                       Connecting...
                     </>
                   ) : (
                     <>
-                      <span className="flex h-6 w-6 items-center justify-center rounded-full bg-white/15">
+                      <span className="flex h-7 w-7 items-center justify-center rounded-full bg-white text-slate-950">
                         <svg
                           viewBox="0 0 24 24"
                           fill="currentColor"
-                          className="h-3 w-3"
+                          className="h-3.5 w-3.5"
                         >
                           <path d="M8 5v14l11-7z" />
                         </svg>
@@ -892,7 +885,7 @@ export default function DemoAgent() {
                   disabled={
                     !isSessionActive
                   }
-                  className="flex flex-1 items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm font-bold text-slate-700 shadow-sm transition-all duration-200 hover:border-red-200 hover:bg-red-50 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-40"
+                  className="flex flex-1 items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm font-bold text-slate-700 transition-all hover:border-slate-300 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   <span className="h-2.5 w-2.5 rounded-full bg-red-500" />
 
@@ -901,7 +894,8 @@ export default function DemoAgent() {
 
               </div>
 
-              <div className="mt-4 flex items-center justify-between rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+              {/* Status */}
+              <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
 
                 <div className="flex items-start gap-3">
 
@@ -916,7 +910,7 @@ export default function DemoAgent() {
                   />
 
                   <div>
-                    <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                    <p className="text-[9px] font-bold uppercase tracking-wider text-slate-400">
                       Status
                     </p>
 
@@ -925,16 +919,6 @@ export default function DemoAgent() {
                     </p>
                   </div>
 
-                </div>
-
-                <div className="hidden text-right sm:block">
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                    Audio
-                  </p>
-
-                  <p className="mt-1 text-xs font-semibold text-slate-600">
-                    {audioFrameCount.toLocaleString()}
-                  </p>
                 </div>
 
               </div>
@@ -947,21 +931,21 @@ export default function DemoAgent() {
           <aside className="space-y-5">
 
             {/* Selected demo */}
-            <section className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-[0_16px_50px_-25px_rgba(15,23,42,0.2)]">
+            <section className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-lg shadow-slate-900/[0.04] sm:p-6">
 
               <div className="flex items-center justify-between">
 
-                <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-violet-500">
+                <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-400">
                   Selected demo
                 </p>
 
-                <span className="rounded-full bg-violet-50 px-2.5 py-1 text-[9px] font-bold text-violet-600">
-                  LIVE AI
+                <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[9px] font-bold text-slate-500">
+                  {industry}
                 </span>
 
               </div>
 
-              <h2 className="mt-3 text-xl font-bold tracking-tight text-slate-900">
+              <h2 className="mt-3 text-xl font-bold text-slate-950">
                 {selectedIndustry.name}
               </h2>
 
@@ -969,64 +953,42 @@ export default function DemoAgent() {
                 {selectedIndustry.description}
               </p>
 
-              <div className="mt-5 grid grid-cols-2 gap-3 border-t border-slate-100 pt-5">
+              <div className="mt-6 border-t border-slate-100 pt-5">
 
-                <div className="rounded-2xl bg-slate-50 p-3">
-                  <p className="text-[9px] font-bold uppercase tracking-wider text-slate-400">
-                    Audio
-                  </p>
+                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                  Live audio
+                </p>
 
-                  <p className="mt-1 text-sm font-bold text-slate-800">
-                    {audioFrameCount.toLocaleString()}
-                  </p>
+                <p className="mt-1 text-2xl font-bold tracking-tight text-slate-950">
+                  {audioFrameCount.toLocaleString()}
+                </p>
 
-                  <p className="mt-0.5 text-[10px] text-slate-400">
-                    frames streamed
-                  </p>
-                </div>
-
-                <div className="rounded-2xl bg-slate-50 p-3">
-                  <p className="text-[9px] font-bold uppercase tracking-wider text-slate-400">
-                    Session
-                  </p>
-
-                  <p className="mt-1 text-sm font-bold text-slate-800">
-                    {isSessionActive
-                      ? "Active"
-                      : "Ready"}
-                  </p>
-
-                  <p className="mt-0.5 text-[10px] text-slate-400">
-                    live status
-                  </p>
-                </div>
+                <p className="mt-1 text-xs text-slate-400">
+                  Audio frames streamed
+                </p>
 
               </div>
 
             </section>
 
             {/* Try saying */}
-            <section className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-[0_16px_50px_-25px_rgba(15,23,42,0.2)]">
+            <section className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-lg shadow-slate-900/[0.04] sm:p-6">
 
-              <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-violet-500">
+              <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-400">
                 Try saying
               </p>
 
-              <h3 className="mt-1 text-base font-bold text-slate-900">
-                Start a natural conversation
-              </h3>
+              <div className="mt-4 space-y-2">
 
-              <div className="mt-4 space-y-2.5">
-
-                <div className="rounded-2xl border border-slate-100 bg-slate-50 p-3.5 text-sm font-medium text-slate-600 transition hover:border-violet-100 hover:bg-violet-50/50">
+                <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm text-slate-600 transition hover:border-slate-300 hover:bg-white">
                   &quot;What services do you offer?&quot;
                 </div>
 
-                <div className="rounded-2xl border border-slate-100 bg-slate-50 p-3.5 text-sm font-medium text-slate-600 transition hover:border-violet-100 hover:bg-violet-50/50">
+                <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm text-slate-600 transition hover:border-slate-300 hover:bg-white">
                   &quot;What are your business hours?&quot;
                 </div>
 
-                <div className="rounded-2xl border border-slate-100 bg-slate-50 p-3.5 text-sm font-medium text-slate-600 transition hover:border-violet-100 hover:bg-violet-50/50">
+                <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm text-slate-600 transition hover:border-slate-300 hover:bg-white">
                   &quot;Can I book an appointment?&quot;
                 </div>
 
@@ -1035,78 +997,75 @@ export default function DemoAgent() {
             </section>
 
             {/* Contact CTA */}
-            <section className="relative overflow-hidden rounded-[28px] bg-gradient-to-br from-violet-600 via-indigo-600 to-blue-600 p-5 text-white shadow-xl shadow-indigo-500/20">
+            <section className="overflow-hidden rounded-[28px] bg-slate-950 p-6 text-white shadow-xl shadow-slate-900/10">
 
-              <div className="absolute -right-12 -top-12 h-32 w-32 rounded-full bg-white/10 blur-2xl" />
+              <div className="mb-5 flex h-10 w-10 items-center justify-center rounded-xl bg-white/10">
 
-              <div className="relative">
-
-                <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-white/15 backdrop-blur">
-                  <svg
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="1.7"
-                    className="h-5 w-5"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5Z"
-                    />
-                  </svg>
-                </div>
-
-                <p className="mt-4 text-[10px] font-bold uppercase tracking-[0.18em] text-violet-100">
-                  Want this for your business?
-                </p>
-
-                <h2 className="mt-2 text-xl font-bold tracking-tight">
-                  Turn every call into an opportunity.
-                </h2>
-
-                <p className="mt-2 text-sm leading-6 text-violet-100">
-                  Talk to us about building an AI receptionist
-                  tailored to your business.
-                </p>
-
-                <Link
-                  href="/#contact"
-                  className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-white px-4 py-3 text-sm font-bold text-indigo-700 shadow-lg transition hover:-translate-y-0.5 hover:bg-slate-50"
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                  className="h-5 w-5"
                 >
-                  Contact Us
-
-                  <svg
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    className="h-4 w-4"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      d="M5 12h14M13 6l6 6-6 6"
-                    />
-                  </svg>
-                </Link>
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M21 11.5a8.38 8.38 0 0 1-9 8.5 8.38 8.38 0 0 1-4.5-1.3L3 20l1.3-4.5A8.38 8.38 0 0 1 3 11a8.38 8.38 0 0 1 8.5-8.5A8.38 8.38 0 0 1 21 11.5Z"
+                  />
+                </svg>
 
               </div>
+
+              <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-400">
+                Want this for your business?
+              </p>
+
+              <h2 className="mt-2 text-xl font-bold">
+                Let&apos;s build your AI receptionist.
+              </h2>
+
+              <p className="mt-2 text-sm leading-6 text-slate-400">
+                Talk to us about deploying a custom
+                AI receptionist for your business.
+              </p>
+
+              <Link
+                href="/contact"
+                className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-white px-4 py-3 text-sm font-bold text-slate-950 transition hover:bg-slate-100"
+              >
+                Contact Us
+
+                <svg
+                  viewBox="0 0 20 20"
+                  fill="none"
+                  className="h-4 w-4"
+                >
+                  <path
+                    d="M4 10h11M11 5l5 5-5 5"
+                    stroke="currentColor"
+                    strokeWidth="1.6"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+              </Link>
 
             </section>
 
             {/* Demo notice */}
-            <section className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm">
+            <section className="rounded-[28px] border border-blue-100 bg-blue-50/70 p-5">
 
               <div className="flex items-start gap-3">
 
-                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-amber-100 bg-amber-50">
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white text-blue-600 shadow-sm">
+
                   <svg
                     viewBox="0 0 24 24"
                     fill="none"
                     stroke="currentColor"
                     strokeWidth="1.5"
-                    className="h-4 w-4 text-amber-600"
+                    className="h-4 w-4"
                   >
                     <path
                       strokeLinecap="round"
@@ -1114,18 +1073,22 @@ export default function DemoAgent() {
                       d="M12 9v4m0 4h.01M10.29 3.86 2.82 17a2 2 0 0 0 1.74 3h14.88a2 2 0 0 0 1.74-3L13.71 3.86a2 2 0 0 0-3.42 0Z"
                     />
                   </svg>
+
                 </div>
 
                 <div>
+
                   <p className="text-sm font-bold text-slate-800">
                     Public demonstration
                   </p>
 
                   <p className="mt-1 text-xs leading-5 text-slate-500">
-                    This demo uses static business knowledge.
-                    Customers, leads, appointments and calls
-                    are not created or modified.
+                    This demo uses static business
+                    knowledge. Customers, leads,
+                    appointments and calls are not
+                    created or modified.
                   </p>
+
                 </div>
 
               </div>
@@ -1133,44 +1096,48 @@ export default function DemoAgent() {
             </section>
 
           </aside>
-
         </div>
 
         {/* Bottom contact strip */}
-        <div className="mt-8 flex flex-col items-center justify-between gap-4 rounded-3xl border border-slate-200 bg-white px-5 py-4 shadow-sm sm:flex-row sm:px-6">
+        <div className="mt-6 flex flex-col gap-4 rounded-[28px] border border-slate-200 bg-white p-5 shadow-lg shadow-slate-900/[0.04] sm:flex-row sm:items-center sm:justify-between sm:p-6">
 
           <div>
-            <p className="text-sm font-bold text-slate-800">
-              Ready to put an AI receptionist on your business line?
+            <p className="text-sm font-bold text-slate-950">
+              Like what you experienced?
             </p>
 
             <p className="mt-1 text-xs text-slate-500">
-              Let&apos;s build a system around your business workflow.
+              Let&apos;s discuss how an AI receptionist
+              can work for your business.
             </p>
           </div>
 
           <Link
-            href="/#contact"
-            className="inline-flex shrink-0 items-center gap-2 rounded-xl border border-violet-200 bg-violet-50 px-4 py-2.5 text-xs font-bold text-violet-700 transition hover:bg-violet-100"
+            href="/contact"
+            className="inline-flex items-center justify-center gap-2 rounded-xl bg-slate-950 px-5 py-3 text-xs font-bold text-white shadow-md transition hover:bg-slate-800"
           >
-            Contact Us
+            Talk to us
 
             <svg
-              viewBox="0 0 24 24"
+              viewBox="0 0 20 20"
               fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              className="h-3.5 w-3.5"
+              className="h-4 w-4"
             >
               <path
+                d="M4 10h11M11 5l5 5-5 5"
+                stroke="currentColor"
+                strokeWidth="1.6"
                 strokeLinecap="round"
                 strokeLinejoin="round"
-                d="M5 12h14M13 6l6 6-6 6"
               />
             </svg>
           </Link>
 
         </div>
+
+        <footer className="py-6 text-center text-[11px] text-slate-400">
+          AI Voice Receptionist • Interactive demonstration
+        </footer>
 
       </div>
     </main>
